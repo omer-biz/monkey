@@ -25,11 +25,7 @@ impl Repl {
         while buf_read.read_line(&mut line)? > 0 {
             let mut lexer = Lexer::new(line);
 
-            while let token = lexer.next_token() {
-                if token.ttype == TokenType::EOF {
-                    break;
-                }
-
+            while let Some(token) = lexer.next_token() {
                 // write!(writer, "token: {:?}", token).unwrap();
                 println!("token: {:?}", token);
             }

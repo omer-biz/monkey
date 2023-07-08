@@ -1,4 +1,4 @@
-use crate::token::{self, Token, TokenType};
+use crate::token::{Token, TokenType};
 
 pub struct Lexer {
     input: String,
@@ -44,7 +44,7 @@ impl Lexer {
         self.read_position += 1;
     }
 
-    pub fn next_token(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Option<Token> {
         self.skip_whitespace();
         let t = match self.ch {
             '!' => {
@@ -76,20 +76,20 @@ impl Lexer {
             '-' => Token::new(TokenType::MINUS, self.ch.to_string()),
             '*' => Token::new(TokenType::ASTRIX, self.ch.to_string()),
             '/' => Token::new(TokenType::SLASH, self.ch.to_string()),
-            '\0' => Token::new(TokenType::EOF, self.ch.to_string()),
+            '\0' => return None,
             oth => {
                 if oth.is_letter() {
                     let literal = self.read_identifier();
-                    return Token::new(Token::lookup_ident(&literal), literal);
+                    return Some(Token::new(Token::lookup_ident(&literal), literal));
                 } else if oth.is_ascii_digit() {
-                    return Token::new(TokenType::INT, self.read_number());
+                    return Some(Token::new(TokenType::INT, self.read_number()));
                 } else {
                     Token::new(TokenType::ILLEGAL, self.ch.to_string())
                 }
             }
         };
         self.next_char();
-        t
+        Some(t)
     }
 
     pub fn skip_whitespace(&mut self) {
@@ -153,14 +153,6 @@ impl Lexer {
 mod tests {
     use crate::token::{Token, TokenType};
 
-    use super::Lexer;
-
-    #[derive(Debug)]
-    struct ExpectedToken {
-        ttype: TokenType,
-        literal: String,
-    }
-
     #[test]
     fn test_next_token() {
         let input = r#"let five = 5;
@@ -186,111 +178,103 @@ if (5 > 10) {
 "#;
 
         let expected_tokens = vec![
-            Token::new(TokenType::LET, "let".to_string()),
-            Token::new(TokenType::IDENT, "five".to_string()),
-            Token::new(TokenType::ASSIGN, "=".to_string()),
-            Token::new(TokenType::INT, "5".to_string()),
-            Token::new(TokenType::SEMICOLON, ';'.to_string()),
+            Some(Token::new(TokenType::LET, "let".to_string())),
+            Some(Token::new(TokenType::IDENT, "five".to_string())),
+            Some(Token::new(TokenType::ASSIGN, "=".to_string())),
+            Some(Token::new(TokenType::INT, "5".to_string())),
+            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
             //
-            Token::new(TokenType::LET, "let".to_string()),
-            Token::new(TokenType::IDENT, "ten".to_string()),
-            Token::new(TokenType::ASSIGN, "=".to_string()),
-            Token::new(TokenType::INT, "10".to_string()),
-            Token::new(TokenType::SEMICOLON, ';'.to_string()),
+            Some(Token::new(TokenType::LET, "let".to_string())),
+            Some(Token::new(TokenType::IDENT, "ten".to_string())),
+            Some(Token::new(TokenType::ASSIGN, "=".to_string())),
+            Some(Token::new(TokenType::INT, "10".to_string())),
+            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
             //
-            Token::new(TokenType::LET, "let".to_string()),
-            Token::new(TokenType::IDENT, "add".to_string()),
-            Token::new(TokenType::ASSIGN, "=".to_string()),
-            Token::new(TokenType::FUNCTION, "fn".to_string()),
-            Token::new(TokenType::LPAREN, "(".to_string()),
-            Token::new(TokenType::IDENT, "x".to_string()),
-            Token::new(TokenType::COMMA, ",".to_string()),
-            Token::new(TokenType::IDENT, "y".to_string()),
-            Token::new(TokenType::RPAREN, ")".to_string()),
+            Some(Token::new(TokenType::LET, "let".to_string())),
+            Some(Token::new(TokenType::IDENT, "add".to_string())),
+            Some(Token::new(TokenType::ASSIGN, "=".to_string())),
+            Some(Token::new(TokenType::FUNCTION, "fn".to_string())),
+            Some(Token::new(TokenType::LPAREN, "(".to_string())),
+            Some(Token::new(TokenType::IDENT, "x".to_string())),
+            Some(Token::new(TokenType::COMMA, ",".to_string())),
+            Some(Token::new(TokenType::IDENT, "y".to_string())),
+            Some(Token::new(TokenType::RPAREN, ")".to_string())),
             //
-            Token::new(TokenType::LCURL, "{".to_string()),
-            Token::new(TokenType::IDENT, "x".to_string()),
-            Token::new(TokenType::PLUS, "+".to_string()),
-            Token::new(TokenType::IDENT, "y".to_string()),
-            Token::new(TokenType::SEMICOLON, ';'.to_string()),
-            Token::new(TokenType::RCURL, "}".to_string()),
-            Token::new(TokenType::SEMICOLON, ';'.to_string()),
+            Some(Token::new(TokenType::LCURL, "{".to_string())),
+            Some(Token::new(TokenType::IDENT, "x".to_string())),
+            Some(Token::new(TokenType::PLUS, "+".to_string())),
+            Some(Token::new(TokenType::IDENT, "y".to_string())),
+            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
+            Some(Token::new(TokenType::RCURL, "}".to_string())),
+            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
             //
-            Token::new(TokenType::LET, "let".to_string()),
-            Token::new(TokenType::IDENT, "result".to_string()),
-            Token::new(TokenType::ASSIGN, "=".to_string()),
-            Token::new(TokenType::IDENT, "add".to_string()),
-            Token::new(TokenType::LPAREN, "(".to_string()),
-            Token::new(TokenType::IDENT, "five".to_string()),
-            Token::new(TokenType::COMMA, ",".to_string()),
-            Token::new(TokenType::IDENT, "ten".to_string()),
-            Token::new(TokenType::RPAREN, ")".to_string()),
-            Token::new(TokenType::SEMICOLON, ';'.to_string()),
+            Some(Token::new(TokenType::LET, "let".to_string())),
+            Some(Token::new(TokenType::IDENT, "result".to_string())),
+            Some(Token::new(TokenType::ASSIGN, "=".to_string())),
+            Some(Token::new(TokenType::IDENT, "add".to_string())),
+            Some(Token::new(TokenType::LPAREN, "(".to_string())),
+            Some(Token::new(TokenType::IDENT, "five".to_string())),
+            Some(Token::new(TokenType::COMMA, ",".to_string())),
+            Some(Token::new(TokenType::IDENT, "ten".to_string())),
+            Some(Token::new(TokenType::RPAREN, ")".to_string())),
+            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
             //
-            Token::new(TokenType::BANG, '!'.to_string()),
-            Token::new(TokenType::MINUS, '-'.to_string()),
-            Token::new(TokenType::SLASH, '/'.to_string()),
-            Token::new(TokenType::ASTRIX, '*'.to_string()),
-            Token::new(TokenType::INT, '5'.to_string()),
-            Token::new(TokenType::SEMICOLON, ';'.to_string()),
+            Some(Token::new(TokenType::BANG, '!'.to_string())),
+            Some(Token::new(TokenType::MINUS, '-'.to_string())),
+            Some(Token::new(TokenType::SLASH, '/'.to_string())),
+            Some(Token::new(TokenType::ASTRIX, '*'.to_string())),
+            Some(Token::new(TokenType::INT, '5'.to_string())),
+            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
             //
-            Token::new(TokenType::INT, '5'.to_string()),
-            Token::new(TokenType::LT, '<'.to_string()),
-            Token::new(TokenType::INT, "10".to_string()),
-            Token::new(TokenType::GT, ">".to_string()),
-            Token::new(TokenType::INT, "5".to_string()),
-            Token::new(TokenType::SEMICOLON, ";".to_string()),
+            Some(Token::new(TokenType::INT, '5'.to_string())),
+            Some(Token::new(TokenType::LT, '<'.to_string())),
+            Some(Token::new(TokenType::INT, "10".to_string())),
+            Some(Token::new(TokenType::GT, ">".to_string())),
+            Some(Token::new(TokenType::INT, "5".to_string())),
+            Some(Token::new(TokenType::SEMICOLON, ";".to_string())),
             //
-            Token::new(TokenType::IF, "if".to_string()),
-            Token::new(TokenType::LPAREN, "(".to_string()),
-            Token::new(TokenType::INT, "5".to_string()),
-            Token::new(TokenType::GT, ">".to_string()),
-            Token::new(TokenType::INT, "10".to_string()),
-            Token::new(TokenType::RPAREN, ")".to_string()),
-            Token::new(TokenType::LCURL, "{".to_string()),
+            Some(Token::new(TokenType::IF, "if".to_string())),
+            Some(Token::new(TokenType::LPAREN, "(".to_string())),
+            Some(Token::new(TokenType::INT, "5".to_string())),
+            Some(Token::new(TokenType::GT, ">".to_string())),
+            Some(Token::new(TokenType::INT, "10".to_string())),
+            Some(Token::new(TokenType::RPAREN, ")".to_string())),
+            Some(Token::new(TokenType::LCURL, "{".to_string())),
             //
-            Token::new(TokenType::RETURN, "return".to_string()),
-            Token::new(TokenType::FALSE, "false".to_string()),
-            Token::new(TokenType::SEMICOLON, ";".to_string()),
+            Some(Token::new(TokenType::RETURN, "return".to_string())),
+            Some(Token::new(TokenType::FALSE, "false".to_string())),
+            Some(Token::new(TokenType::SEMICOLON, ";".to_string())),
             //
-            Token::new(TokenType::RCURL, '}'.to_string()),
-            Token::new(TokenType::ELSE, "else".to_string()),
-            Token::new(TokenType::LCURL, "{".to_string()),
+            Some(Token::new(TokenType::RCURL, '}'.to_string())),
+            Some(Token::new(TokenType::ELSE, "else".to_string())),
+            Some(Token::new(TokenType::LCURL, "{".to_string())),
             //
-            Token::new(TokenType::RETURN, "return".to_string()),
-            Token::new(TokenType::TRUE, "true".to_string()),
-            Token::new(TokenType::SEMICOLON, ";".to_string()),
+            Some(Token::new(TokenType::RETURN, "return".to_string())),
+            Some(Token::new(TokenType::TRUE, "true".to_string())),
+            Some(Token::new(TokenType::SEMICOLON, ";".to_string())),
             //
-            Token::new(TokenType::RCURL, '}'.to_string()),
+            Some(Token::new(TokenType::RCURL, '}'.to_string())),
             //
-            Token::new(TokenType::INT, "10".to_string()),
-            Token::new(TokenType::NEQ, "!=".to_string()),
-            Token::new(TokenType::INT, "9".to_string()),
-            Token::new(TokenType::SEMICOLON, ";".to_string()),
+            Some(Token::new(TokenType::INT, "10".to_string())),
+            Some(Token::new(TokenType::NEQ, "!=".to_string())),
+            Some(Token::new(TokenType::INT, "9".to_string())),
+            Some(Token::new(TokenType::SEMICOLON, ";".to_string())),
             //
-            Token::new(TokenType::INT, "10".to_string()),
-            Token::new(TokenType::EQ, "==".to_string()),
-            Token::new(TokenType::INT, "10".to_string()),
-            Token::new(TokenType::SEMICOLON, ";".to_string()),
+            Some(Token::new(TokenType::INT, "10".to_string())),
+            Some(Token::new(TokenType::EQ, "==".to_string())),
+            Some(Token::new(TokenType::INT, "10".to_string())),
+            Some(Token::new(TokenType::SEMICOLON, ";".to_string())),
             //
-            Token::new(TokenType::EOF, '\0'.to_string()),
+            None,
         ];
 
-        let mut lex = Lexer::new(input.to_string());
+        let mut lex = super::Lexer::new(input.to_string());
 
-        // for (i, expected) in expected_tokens.iter().enumerate() {
         for expected in expected_tokens.iter() {
             let tok = lex.next_token();
-
-            println!("Expected: {:?}", expected);
-            println!("Got: {:?}\n", tok);
-
-            if tok.ttype != expected.ttype {
-                panic!("unexpedted type")
-            }
-
-            if tok.literal != expected.literal {
-                panic!("unexpedted literal")
+            if &tok != expected {
+                println!("Expected: {:?}", expected);
+                println!("Got: {:?}\n", tok);
             }
         }
     }
