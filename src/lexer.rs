@@ -150,6 +150,14 @@ impl Lexer {
     }
 }
 
+impl Iterator for Lexer {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_token()
+    }
+}
+
 mod tests {
     use crate::token::{Token, TokenType};
 
