@@ -1,16 +1,13 @@
-use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 
-use crate::{
-    lexer::Lexer,
-    token::{Token, TokenType},
-};
+use crate::lexer::Lexer;
 
 const PROMPT: &str = ">> ";
 
 pub struct Repl;
 
 impl Repl {
-    pub fn start<R, W>(reader: R, mut writer: W) -> io::Result<()>
+    pub fn start<R, W>(reader: R, mut _writer: W) -> io::Result<()>
     where
         R: Read,
         W: Write,
@@ -23,7 +20,7 @@ impl Repl {
         let _ = io::stdout().flush();
 
         while buf_read.read_line(&mut line)? > 0 {
-            let mut lexer = Lexer::new(line);
+            let mut lexer = Lexer::new(&line);
 
             while let Some(token) = lexer.next_token() {
                 // write!(writer, "token: {:?}", token).unwrap();

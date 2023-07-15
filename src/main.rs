@@ -10,5 +10,5 @@ fn main() {
 
     println!("Feel free to type in commands\n");
 
-    let repl = Repl::start(io::stdin(), io::stdout());
+    let _repl = Repl::start(io::stdin(), io::stdout());
 }
