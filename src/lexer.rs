@@ -50,41 +50,41 @@ impl Lexer {
             '!' => {
                 if self.peek_char() == '=' {
                     self.next_char();
-                    Token::new(TokenType::NEQ, "!=".to_string())
+                    Token::new(TokenType::NEQ, "!=".to_string().as_str())
                 } else {
-                    Token::new(TokenType::BANG, self.ch.to_string())
+                    Token::new(TokenType::BANG, self.ch.to_string().as_str())
                 }
             }
             '=' => {
                 //
                 if self.peek_char() == '=' {
                     self.next_char();
-                    Token::new(TokenType::EQ, "==".to_string())
+                    Token::new(TokenType::EQ, "==".to_string().as_str())
                 } else {
-                    Token::new(TokenType::ASSIGN, self.ch.to_string())
+                    Token::new(TokenType::ASSIGN, self.ch.to_string().as_str())
                 }
             }
-            ',' => Token::new(TokenType::COMMA, self.ch.to_string()),
-            ';' => Token::new(TokenType::SEMICOLON, self.ch.to_string()),
-            '(' => Token::new(TokenType::LPAREN, self.ch.to_string()),
-            ')' => Token::new(TokenType::RPAREN, self.ch.to_string()),
-            '{' => Token::new(TokenType::LCURL, self.ch.to_string()),
-            '}' => Token::new(TokenType::RCURL, self.ch.to_string()),
-            '+' => Token::new(TokenType::PLUS, self.ch.to_string()),
-            '<' => Token::new(TokenType::LT, self.ch.to_string()),
-            '>' => Token::new(TokenType::GT, self.ch.to_string()),
-            '-' => Token::new(TokenType::MINUS, self.ch.to_string()),
-            '*' => Token::new(TokenType::ASTRIX, self.ch.to_string()),
-            '/' => Token::new(TokenType::SLASH, self.ch.to_string()),
+            ',' => Token::new(TokenType::COMMA, self.ch.to_string().as_str()),
+            ';' => Token::new(TokenType::SEMICOLON, self.ch.to_string().as_str()),
+            '(' => Token::new(TokenType::LPAREN, self.ch.to_string().as_str()),
+            ')' => Token::new(TokenType::RPAREN, self.ch.to_string().as_str()),
+            '{' => Token::new(TokenType::LCURL, self.ch.to_string().as_str()),
+            '}' => Token::new(TokenType::RCURL, self.ch.to_string().as_str()),
+            '+' => Token::new(TokenType::PLUS, self.ch.to_string().as_str()),
+            '<' => Token::new(TokenType::LT, self.ch.to_string().as_str()),
+            '>' => Token::new(TokenType::GT, self.ch.to_string().as_str()),
+            '-' => Token::new(TokenType::MINUS, self.ch.to_string().as_str()),
+            '*' => Token::new(TokenType::ASTRIX, self.ch.to_string().as_str()),
+            '/' => Token::new(TokenType::SLASH, self.ch.to_string().as_str()),
             '\0' => return None,
             oth => {
                 if oth.is_letter() {
                     let literal = self.read_identifier();
-                    return Some(Token::new(Token::lookup_ident(&literal), literal));
+                    return Some(Token::new(Token::lookup_ident(&literal), &literal));
                 } else if oth.is_ascii_digit() {
-                    return Some(Token::new(TokenType::INT, self.read_number()));
+                    return Some(Token::new(TokenType::INT, &self.read_number()));
                 } else {
-                    Token::new(TokenType::ILLEGAL, self.ch.to_string())
+                    Token::new(TokenType::ILLEGAL, &self.ch.to_string())
                 }
             }
         };
@@ -111,14 +111,11 @@ impl Lexer {
             self.next_char();
         }
 
-        let ret = self
-            .input
+        self.input
             .chars()
             .skip(old_pos)
             .take(self.position - old_pos)
-            .collect();
-
-        ret
+            .collect()
     }
 
     fn read_number(&mut self) -> String {
@@ -128,14 +125,11 @@ impl Lexer {
             self.next_char();
         }
 
-        let ret = self
-            .input
+        self.input
             .chars()
             .skip(old_pos)
             .take(self.position - old_pos)
-            .collect();
-
-        ret
+            .collect()
     }
 
     fn peek_char(&self) -> char {
@@ -187,92 +181,92 @@ if (5 > 10) {
 "#;
 
         let expected_tokens = vec![
-            Some(Token::new(TokenType::LET, "let".to_string())),
-            Some(Token::new(TokenType::IDENT, "five".to_string())),
-            Some(Token::new(TokenType::ASSIGN, "=".to_string())),
-            Some(Token::new(TokenType::INT, "5".to_string())),
-            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
+            Some(Token::new(TokenType::LET, "let")),
+            Some(Token::new(TokenType::IDENT, "five")),
+            Some(Token::new(TokenType::ASSIGN, "=")),
+            Some(Token::new(TokenType::INT, "5")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
             //
-            Some(Token::new(TokenType::LET, "let".to_string())),
-            Some(Token::new(TokenType::IDENT, "ten".to_string())),
-            Some(Token::new(TokenType::ASSIGN, "=".to_string())),
-            Some(Token::new(TokenType::INT, "10".to_string())),
-            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
+            Some(Token::new(TokenType::LET, "let")),
+            Some(Token::new(TokenType::IDENT, "ten")),
+            Some(Token::new(TokenType::ASSIGN, "=")),
+            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
             //
-            Some(Token::new(TokenType::LET, "let".to_string())),
-            Some(Token::new(TokenType::IDENT, "add".to_string())),
-            Some(Token::new(TokenType::ASSIGN, "=".to_string())),
-            Some(Token::new(TokenType::FUNCTION, "fn".to_string())),
-            Some(Token::new(TokenType::LPAREN, "(".to_string())),
-            Some(Token::new(TokenType::IDENT, "x".to_string())),
-            Some(Token::new(TokenType::COMMA, ",".to_string())),
-            Some(Token::new(TokenType::IDENT, "y".to_string())),
-            Some(Token::new(TokenType::RPAREN, ")".to_string())),
+            Some(Token::new(TokenType::LET, "let")),
+            Some(Token::new(TokenType::IDENT, "add")),
+            Some(Token::new(TokenType::ASSIGN, "=")),
+            Some(Token::new(TokenType::FUNCTION, "fn")),
+            Some(Token::new(TokenType::LPAREN, "(")),
+            Some(Token::new(TokenType::IDENT, "x")),
+            Some(Token::new(TokenType::COMMA, ",")),
+            Some(Token::new(TokenType::IDENT, "y")),
+            Some(Token::new(TokenType::RPAREN, ")")),
             //
-            Some(Token::new(TokenType::LCURL, "{".to_string())),
-            Some(Token::new(TokenType::IDENT, "x".to_string())),
-            Some(Token::new(TokenType::PLUS, "+".to_string())),
-            Some(Token::new(TokenType::IDENT, "y".to_string())),
-            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
-            Some(Token::new(TokenType::RCURL, "}".to_string())),
-            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
+            Some(Token::new(TokenType::LCURL, "{")),
+            Some(Token::new(TokenType::IDENT, "x")),
+            Some(Token::new(TokenType::PLUS, "+")),
+            Some(Token::new(TokenType::IDENT, "y")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
+            Some(Token::new(TokenType::RCURL, "}")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
             //
-            Some(Token::new(TokenType::LET, "let".to_string())),
-            Some(Token::new(TokenType::IDENT, "result".to_string())),
-            Some(Token::new(TokenType::ASSIGN, "=".to_string())),
-            Some(Token::new(TokenType::IDENT, "add".to_string())),
-            Some(Token::new(TokenType::LPAREN, "(".to_string())),
-            Some(Token::new(TokenType::IDENT, "five".to_string())),
-            Some(Token::new(TokenType::COMMA, ",".to_string())),
-            Some(Token::new(TokenType::IDENT, "ten".to_string())),
-            Some(Token::new(TokenType::RPAREN, ")".to_string())),
-            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
+            Some(Token::new(TokenType::LET, "let")),
+            Some(Token::new(TokenType::IDENT, "result")),
+            Some(Token::new(TokenType::ASSIGN, "=")),
+            Some(Token::new(TokenType::IDENT, "add")),
+            Some(Token::new(TokenType::LPAREN, "(")),
+            Some(Token::new(TokenType::IDENT, "five")),
+            Some(Token::new(TokenType::COMMA, ",")),
+            Some(Token::new(TokenType::IDENT, "ten")),
+            Some(Token::new(TokenType::RPAREN, ")")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
             //
-            Some(Token::new(TokenType::BANG, '!'.to_string())),
-            Some(Token::new(TokenType::MINUS, '-'.to_string())),
-            Some(Token::new(TokenType::SLASH, '/'.to_string())),
-            Some(Token::new(TokenType::ASTRIX, '*'.to_string())),
-            Some(Token::new(TokenType::INT, '5'.to_string())),
-            Some(Token::new(TokenType::SEMICOLON, ';'.to_string())),
+            Some(Token::new(TokenType::BANG, "!")),
+            Some(Token::new(TokenType::MINUS, "-")),
+            Some(Token::new(TokenType::SLASH, "/")),
+            Some(Token::new(TokenType::ASTRIX, "*")),
+            Some(Token::new(TokenType::INT, "5")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
             //
-            Some(Token::new(TokenType::INT, '5'.to_string())),
-            Some(Token::new(TokenType::LT, '<'.to_string())),
-            Some(Token::new(TokenType::INT, "10".to_string())),
-            Some(Token::new(TokenType::GT, ">".to_string())),
-            Some(Token::new(TokenType::INT, "5".to_string())),
-            Some(Token::new(TokenType::SEMICOLON, ";".to_string())),
+            Some(Token::new(TokenType::INT, "5")),
+            Some(Token::new(TokenType::LT, "<")),
+            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::GT, ">")),
+            Some(Token::new(TokenType::INT, "5")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
             //
-            Some(Token::new(TokenType::IF, "if".to_string())),
-            Some(Token::new(TokenType::LPAREN, "(".to_string())),
-            Some(Token::new(TokenType::INT, "5".to_string())),
-            Some(Token::new(TokenType::GT, ">".to_string())),
-            Some(Token::new(TokenType::INT, "10".to_string())),
-            Some(Token::new(TokenType::RPAREN, ")".to_string())),
-            Some(Token::new(TokenType::LCURL, "{".to_string())),
+            Some(Token::new(TokenType::IF, "if")),
+            Some(Token::new(TokenType::LPAREN, "(")),
+            Some(Token::new(TokenType::INT, "5")),
+            Some(Token::new(TokenType::GT, ">")),
+            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::RPAREN, ")")),
+            Some(Token::new(TokenType::LCURL, "{")),
             //
-            Some(Token::new(TokenType::RETURN, "return".to_string())),
-            Some(Token::new(TokenType::FALSE, "false".to_string())),
-            Some(Token::new(TokenType::SEMICOLON, ";".to_string())),
+            Some(Token::new(TokenType::RETURN, "return")),
+            Some(Token::new(TokenType::FALSE, "false")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
             //
-            Some(Token::new(TokenType::RCURL, '}'.to_string())),
-            Some(Token::new(TokenType::ELSE, "else".to_string())),
-            Some(Token::new(TokenType::LCURL, "{".to_string())),
+            Some(Token::new(TokenType::RCURL, "}")),
+            Some(Token::new(TokenType::ELSE, "else")),
+            Some(Token::new(TokenType::LCURL, "{")),
             //
-            Some(Token::new(TokenType::RETURN, "return".to_string())),
-            Some(Token::new(TokenType::TRUE, "true".to_string())),
-            Some(Token::new(TokenType::SEMICOLON, ";".to_string())),
+            Some(Token::new(TokenType::RETURN, "return")),
+            Some(Token::new(TokenType::TRUE, "true")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
             //
-            Some(Token::new(TokenType::RCURL, '}'.to_string())),
+            Some(Token::new(TokenType::RCURL, "}")),
             //
-            Some(Token::new(TokenType::INT, "10".to_string())),
-            Some(Token::new(TokenType::NEQ, "!=".to_string())),
-            Some(Token::new(TokenType::INT, "9".to_string())),
-            Some(Token::new(TokenType::SEMICOLON, ";".to_string())),
+            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::NEQ, "!=")),
+            Some(Token::new(TokenType::INT, "9")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
             //
-            Some(Token::new(TokenType::INT, "10".to_string())),
-            Some(Token::new(TokenType::EQ, "==".to_string())),
-            Some(Token::new(TokenType::INT, "10".to_string())),
-            Some(Token::new(TokenType::SEMICOLON, ";".to_string())),
+            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::EQ, "==")),
+            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
             //
             None,
         ];
