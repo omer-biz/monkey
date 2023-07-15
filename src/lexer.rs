@@ -18,9 +18,9 @@ impl IsLetter for char {
 }
 
 impl Lexer {
-    pub fn new(input: String) -> Self {
+    pub fn new(input: &str) -> Self {
         let mut l = Lexer {
-            input,
+            input: input.to_string(),
             position: 0,
             read_position: 0,
             ch: '\0',
@@ -159,10 +159,11 @@ impl Iterator for Lexer {
 }
 
 mod tests {
-    use crate::token::{Token, TokenType};
 
     #[test]
     fn test_next_token() {
+        use crate::token::{Token, TokenType};
+
         let input = r#"let five = 5;
 let ten = 10;
 let add = fn(x, y) {
@@ -276,7 +277,7 @@ if (5 > 10) {
             None,
         ];
 
-        let mut lex = super::Lexer::new(input.to_string());
+        let mut lex = super::Lexer::new(input);
 
         for expected in expected_tokens.iter() {
             let tok = lex.next_token();
