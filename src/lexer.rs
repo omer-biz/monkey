@@ -13,7 +13,7 @@ trait IsLetter {
 
 impl IsLetter for char {
     fn is_letter(&self) -> bool {
-        return &'a' <= self && self <= &'z' || &'A' <= self && self <= &'Z' || self == &'_';
+        (&'a'..=&'z').contains(&self) || (&'A'..=&'Z').contains(&self) || self == &'_'
     }
 }
 
@@ -134,7 +134,7 @@ impl Lexer {
 
     fn peek_char(&self) -> char {
         if self.read_position >= self.input.len() {
-            return '\0';
+            '\0'
         } else {
             self.input
                 .chars()

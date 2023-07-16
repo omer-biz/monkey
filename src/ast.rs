@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use enum_dispatch::enum_dispatch;
 
 use crate::token::Token;
@@ -5,7 +7,7 @@ use crate::token::Token;
 #[enum_dispatch]
 pub trait Node {
     fn token_literal(&self) -> &str;
-    fn to_string(&self) -> &str;
+    fn as_str(&self) -> &str;
 }
 
 #[enum_dispatch]
@@ -18,6 +20,7 @@ pub trait Expression: Node {
     fn expression_node(&self);
 }
 
+#[derive(Debug)]
 pub struct LetStatement {
     pub token: Token,
     pub name: Identifier,
@@ -25,27 +28,36 @@ pub struct LetStatement {
 }
 
 #[enum_dispatch(Expression, Node)]
+#[derive(Debug)]
 pub enum Expressions {
     Ident(Identifier),
 }
 
+#[derive(Debug)]
 pub struct Program {
     pub statements: Vec<Statements>,
 }
 
 impl Program {
-    pub fn to_string(&self) -> String {
+    pub fn tree(&self) -> String {
         let mut buffer: String = String::new();
 
         for stmt in &self.statements {
-            buffer.push_str(&stmt.to_string())
+            buffer.push_str(stmt.as_str())
         }
 
         buffer
     }
 }
 
+impl Display for Program {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.tree())
+    }
+}
+
 #[enum_dispatch(Statement, Node)]
+#[derive(Debug)]
 pub enum Statements {
     LetStmt(LetStatement),
 }
@@ -55,7 +67,7 @@ impl Node for LetStatement {
         &self.token.literal
     }
 
-    fn to_string(&self) -> &str {
+    fn as_str(&self) -> &str {
         todo!()
     }
 }
@@ -75,7 +87,7 @@ impl Node for Identifier {
         &self.token.literal
     }
 
-    fn to_string(&self) -> &str {
+    fn as_str(&self) -> &str {
         todo!()
     }
 }

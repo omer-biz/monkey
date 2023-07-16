@@ -29,9 +29,9 @@ impl Parser {
 
     pub fn cur_token_is(&mut self, token_type: &TokenType) -> bool {
         if let Some(token) = &self.cur_token {
-            return &token.ttype == token_type;
+            &token.ttype == token_type
         } else {
-            return false;
+            false
         }
     }
 
@@ -41,7 +41,7 @@ impl Parser {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn parse_program(&mut self) -> Program {
@@ -77,7 +77,7 @@ impl Parser {
             return None;
         }
 
-        let ident_tokn = self.cur_token.clone().expect("checked");
+        let ident_tokn = self.cur_token.take().expect("checked");
         let name = Identifier {
             token: ident_tokn.clone(),
             value: ident_tokn.literal,
@@ -101,17 +101,17 @@ impl Parser {
     fn expect_peek_is(&mut self, token: TokenType) -> bool {
         if self.peek_token_is(&token) {
             self.next_token();
-            return true;
+            true
         } else {
-            return false;
+            false
         }
     }
 
     fn peek_token_is(&self, token_type: &TokenType) -> bool {
         if let Some(token) = &self.peek_token {
-            return &token.ttype == token_type;
+            &token.ttype == token_type
         } else {
-            return false;
+            false
         }
     }
 }
@@ -120,7 +120,7 @@ mod tests {
     use crate::ast::{Node, Statements};
 
     #[test]
-    fn test_let_statements() {
+    pub fn test_let_statements() {
         use super::Parser;
         use crate::lexer::Lexer;
 
@@ -149,16 +149,16 @@ mod tests {
 
             test_let_statement(stmt, ident);
         }
+        println!("ast: {:#?}", program.statements);
     }
 
-    fn test_let_statement(stmt: &Statements, ident: &str) {
+    #[allow(dead_code)]
+    pub fn test_let_statement(stmt: &Statements, ident: &str) {
         if stmt.token_literal() != "let" {
             panic!("stmt.token_literal not 'let'. got={}", stmt.token_literal())
         }
 
-        let let_stmt = match stmt {
-            Statements::LetStmt(let_stmt) => let_stmt,
-        };
+        let Statements::LetStmt(let_stmt) = stmt;
 
         if let_stmt.name.value != ident {
             panic!(
