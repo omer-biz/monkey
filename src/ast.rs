@@ -60,6 +60,7 @@ impl Display for Program {
 #[derive(Debug)]
 pub enum Statements {
     LetStmt(LetStatement),
+    RetStmt(ReturnStatement),
 }
 
 impl Node for LetStatement {
@@ -94,4 +95,26 @@ impl Node for Identifier {
 
 impl Expression for Identifier {
     fn expression_node(&self) {}
+}
+
+#[derive(Debug)]
+pub struct ReturnStatement {
+    pub token: Token,
+    pub value: Option<Expressions>,
+}
+
+impl Node for ReturnStatement {
+    fn token_literal(&self) -> &str {
+        &self.token.literal
+    }
+
+    fn as_str(&self) -> &str {
+        todo!()
+    }
+}
+
+impl Statement for ReturnStatement {
+    fn statement_node(&self) {
+        todo!()
+    }
 }

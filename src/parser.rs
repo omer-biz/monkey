@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Identifier, LetStatement, Program, Statements},
+    ast::{Identifier, LetStatement, Program, ReturnStatement, Statements},
     lexer::Lexer,
     token::{Token, TokenType},
 };
@@ -8,6 +8,7 @@ pub struct Parser {
     lexer: Lexer,
     cur_token: Option<Token>,
     peek_token: Option<Token>,
+    errors: Vec<String>,
 }
 
 impl Parser {
@@ -16,10 +17,24 @@ impl Parser {
             cur_token: None,
             peek_token: None,
             lexer,
+            errors: vec![],
         };
         p.next_token();
         p.next_token();
         p
+    }
+
+    pub fn peek_error(&mut self, expected: &TokenType) {
+        let msg = format!(
+            "expected next token to be {:?} got '{}' instead",
+            expected,
+            self.peek_token
+                .as_ref()
+                .map(|s| s.literal.as_str())
+                .unwrap_or("None")
+        );
+
+        self.errors.push(msg);
     }
 
     pub fn next_token(&mut self) {
@@ -63,15 +78,16 @@ impl Parser {
                 ttype: TokenType::LET,
                 literal: _,
             }) => self.parse_let_statement(),
+            Some(Token {
+                ttype: TokenType::RETURN,
+                literal: _,
+            }) => self.parse_return_statement(),
             _ => None,
         }
     }
 
     fn parse_let_statement(&mut self) -> Option<Statements> {
-        let let_token = Token {
-            ttype: TokenType::LET,
-            literal: self.cur_token.take().expect("resolved").literal,
-        };
+        let let_token = self.cur_token.take().expect("`let_token` not found");
 
         if !self.expect_peek_is(TokenType::IDENT) {
             return None;
@@ -103,6 +119,7 @@ impl Parser {
             self.next_token();
             true
         } else {
+            self.peek_error(&token);
             false
         }
     }
@@ -113,6 +130,21 @@ impl Parser {
         } else {
             false
         }
+    }
+
+    fn parse_return_statement(&mut self) -> Option<Statements> {
+        let ret_token = self.cur_token.take().expect("`return` not found");
+
+        self.next_token();
+
+        while !self.cur_token_is(&TokenType::SEMICOLON) {
+            self.next_token();
+        }
+
+        Some(Statements::from(ReturnStatement {
+            token: ret_token,
+            value: None,
+        }))
     }
 }
 
@@ -134,9 +166,10 @@ mod tests {
         let mut parser = Parser::new(lexer);
 
         let program = parser.parse_program();
+        check_parser_errors(&parser);
 
         if program.statements.len() != 3 {
-            panic!("program.Statments does not contain 3 statements")
+            panic!("program.statments does not contain 3 statements")
         }
 
         let exprected_ident = vec!["x", "y", "foobar"];
@@ -149,7 +182,19 @@ mod tests {
 
             test_let_statement(stmt, ident);
         }
-        println!("ast: {:#?}", program.statements);
+    }
+
+    #[allow(dead_code)]
+    fn check_parser_errors(parser: &super::Parser) {
+        if parser.errors.len() == 0 {
+            return;
+        }
+
+        for e in parser.errors.iter() {
+            println!("{}", e);
+        }
+
+        panic!("parser error");
     }
 
     #[allow(dead_code)]
@@ -158,7 +203,7 @@ mod tests {
             panic!("stmt.token_literal not 'let'. got={}", stmt.token_literal())
         }
 
-        let Statements::LetStmt(let_stmt) = stmt;
+        let Statements::LetStmt(let_stmt) = stmt else { panic!("Statment not `LetStatment`") };
 
         if let_stmt.name.value != ident {
             panic!(
@@ -173,6 +218,39 @@ mod tests {
                 ident,
                 let_stmt.name.token_literal()
             )
+        }
+    }
+
+    #[test]
+    pub fn test_return_statements() {
+        use super::Parser;
+        use crate::lexer::Lexer;
+
+        let input = r#"
+        return 5;
+        return x;
+        return x + 1;
+        return 10 + 1;
+        "#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        if program.statements.len() != 4 {
+            panic!("program.statments does not contain 4 statements")
+        }
+
+        for stmt in program.statements.iter() {
+            let Statements::RetStmt(return_statement) = stmt else { panic!("not return statement got {:?}", stmt) };
+            if return_statement.token_literal() != "return" {
+                panic!(
+                    "return_statement.token_literal() not `return` got {:?}",
+                    return_statement.token_literal()
+                )
+            }
         }
     }
 }
