@@ -1,5 +1,5 @@
 use crate::{
-    ast::{Identifier, LetStatement, Program, Statement},
+    ast::{Identifier, LetStatement, Program, Statements},
     lexer::Lexer,
     token::{Token, TokenType},
 };
@@ -57,7 +57,7 @@ impl Parser {
         program
     }
 
-    fn parse_statement(&mut self) -> Option<Box<dyn Statement>> {
+    fn parse_statement(&mut self) -> Option<Statements> {
         match self.cur_token {
             Some(Token {
                 ttype: TokenType::LET,
@@ -67,7 +67,7 @@ impl Parser {
         }
     }
 
-    fn parse_let_statement(&mut self) -> Option<Box<dyn Statement>> {
+    fn parse_let_statement(&mut self) -> Option<Statements> {
         let let_token = Token {
             ttype: TokenType::LET,
             literal: self.cur_token.take().expect("resolved").literal,
@@ -91,7 +91,7 @@ impl Parser {
             self.next_token();
         }
 
-        Some(Box::new(LetStatement {
+        Some(Statements::from(LetStatement {
             name,
             token: let_token,
             value: None,
@@ -117,7 +117,7 @@ impl Parser {
 }
 
 mod tests {
-    use crate::ast::{LetStatement, Node, Statement};
+    use crate::ast::{Node, Statements};
 
     #[test]
     fn test_let_statements() {
@@ -145,22 +145,20 @@ mod tests {
             let stmt = program
                 .statements
                 .get(i)
-                .expect("statment not found at index")
-                .as_ref();
+                .expect("statment not found at index");
 
             test_let_statement(stmt, ident);
         }
     }
 
-    fn test_let_statement(stmt: &dyn Statement, ident: &str) {
+    fn test_let_statement(stmt: &Statements, ident: &str) {
         if stmt.token_literal() != "let" {
             panic!("stmt.token_literal not 'let'. got={}", stmt.token_literal())
         }
 
-        let let_stmt = stmt
-            .as_any()
-            .downcast_ref::<LetStatement>()
-            .expect("s not ast.LetStatment");
+        let let_stmt = match stmt {
+            Statements::LetStmt(let_stmt) => let_stmt,
+        };
 
         if let_stmt.name.value != ident {
             panic!(

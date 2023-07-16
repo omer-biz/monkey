@@ -3,15 +3,15 @@ use lazy_static::lazy_static;
 use std::collections::HashMap;
 
 lazy_static! {
-    static ref KEYWORDS: HashMap<String, TokenType> = {
+    static ref KEYWORDS: HashMap<&'static str, TokenType> = {
         let mut keywords = HashMap::new();
-        keywords.insert("let".to_string(), TokenType::LET);
-        keywords.insert("fn".to_string(), TokenType::FUNCTION);
-        keywords.insert("return".to_string(), TokenType::RETURN);
-        keywords.insert("false".to_string(), TokenType::FALSE);
-        keywords.insert("true".to_string(), TokenType::TRUE);
-        keywords.insert("else".to_string(), TokenType::ELSE);
-        keywords.insert("if".to_string(), TokenType::IF);
+        keywords.insert("let", TokenType::LET);
+        keywords.insert("fn", TokenType::FUNCTION);
+        keywords.insert("return", TokenType::RETURN);
+        keywords.insert("false", TokenType::FALSE);
+        keywords.insert("true", TokenType::TRUE);
+        keywords.insert("else", TokenType::ELSE);
+        keywords.insert("if", TokenType::IF);
 
         keywords
     };
@@ -56,8 +56,11 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(ttype: TokenType, literal: String) -> Self {
-        Self { ttype, literal }
+    pub fn new(ttype: TokenType, literal: &str) -> Self {
+        Self {
+            ttype,
+            literal: literal.to_string(),
+        }
     }
 
     pub fn lookup_ident(ident: &str) -> TokenType {
