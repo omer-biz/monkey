@@ -1,14 +1,22 @@
+use std::collections::HashMap;
+
 use crate::{
-    ast::{Identifier, LetStatement, Program, ReturnStatement, Statements},
+    ast::{Expressions, Identifier, LetStatement, Program, ReturnStatement, Statements},
     lexer::Lexer,
     token::{Token, TokenType},
 };
+
+type PrefixParseFn = fn() -> Expressions;
+type InfixParseFn = fn(Expressions) -> Expressions;
 
 pub struct Parser {
     lexer: Lexer,
     cur_token: Option<Token>,
     peek_token: Option<Token>,
     errors: Vec<String>,
+
+    prefix_parse_fns: HashMap<TokenType, PrefixParseFn>,
+    infix_parse_fns: HashMap<TokenType, PrefixParseFn>,
 }
 
 impl Parser {
@@ -18,6 +26,9 @@ impl Parser {
             peek_token: None,
             lexer,
             errors: vec![],
+
+            prefix_parse_fns: HashMap::new(),
+            infix_parse_fns: HashMap::new(),
         };
         p.next_token();
         p.next_token();
@@ -110,7 +121,13 @@ impl Parser {
         Some(Statements::from(LetStatement {
             name,
             token: let_token,
-            value: None,
+            value: Expressions::from(Identifier {
+                token: Token {
+                    ttype: TokenType::IDENT,
+                    literal: "".to_string(),
+                },
+                value: "".to_string(),
+            }),
         }))
     }
 
@@ -143,7 +160,7 @@ impl Parser {
 
         Some(Statements::from(ReturnStatement {
             token: ret_token,
-            value: None,
+            return_value: None,
         }))
     }
 }
@@ -186,7 +203,7 @@ mod tests {
 
     #[allow(dead_code)]
     fn check_parser_errors(parser: &super::Parser) {
-        if parser.errors.len() == 0 {
+        if parser.errors.is_empty() {
             return;
         }
 
@@ -251,6 +268,41 @@ mod tests {
                     return_statement.token_literal()
                 )
             }
+        }
+    }
+
+    #[test]
+    pub fn test_as_string() {
+        use crate::{
+            ast::{Expressions, Identifier, LetStatement, Program, Statements},
+            token::{Token, TokenType},
+        };
+
+        let program = Program {
+            statements: vec![Statements::from(LetStatement {
+                token: Token {
+                    ttype: TokenType::LET,
+                    literal: "let".to_string(),
+                },
+                name: Identifier {
+                    token: Token {
+                        ttype: TokenType::IDENT,
+                        literal: "my_var".to_string(),
+                    },
+                    value: "my_var".to_string(),
+                },
+                value: Expressions::from(Identifier {
+                    token: Token {
+                        ttype: TokenType::IDENT,
+                        literal: "another_var".to_string(),
+                    },
+                    value: "another_var".to_string(),
+                }),
+            })],
+        };
+
+        if program.to_string() != "let my_var = another_var;" {
+            panic!("program.to_string() wrong. got={:?}", program.to_string());
         }
     }
 }

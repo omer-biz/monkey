@@ -7,7 +7,7 @@ use crate::token::Token;
 #[enum_dispatch]
 pub trait Node {
     fn token_literal(&self) -> &str;
-    fn as_str(&self) -> &str;
+    fn as_string(&self) -> String;
 }
 
 #[enum_dispatch]
@@ -24,7 +24,7 @@ pub trait Expression: Node {
 pub struct LetStatement {
     pub token: Token,
     pub name: Identifier,
-    pub value: Option<Expressions>,
+    pub value: Expressions,
 }
 
 #[enum_dispatch(Expression, Node)]
@@ -39,11 +39,11 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn tree(&self) -> String {
+    pub fn as_string(&self) -> String {
         let mut buffer: String = String::new();
 
         for stmt in &self.statements {
-            buffer.push_str(stmt.as_str())
+            buffer.push_str(&stmt.as_string())
         }
 
         buffer
@@ -52,7 +52,7 @@ impl Program {
 
 impl Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.tree())
+        write!(f, "{}", self.as_string())
     }
 }
 
@@ -61,6 +61,7 @@ impl Display for Program {
 pub enum Statements {
     LetStmt(LetStatement),
     RetStmt(ReturnStatement),
+    ExpStmt(ExpressionStatement),
 }
 
 impl Node for LetStatement {
@@ -68,8 +69,19 @@ impl Node for LetStatement {
         &self.token.literal
     }
 
-    fn as_str(&self) -> &str {
-        todo!()
+    fn as_string(&self) -> String {
+        let mut buffer = String::new();
+
+        buffer.push_str(&format!(
+            "{} {} = {}",
+            self.token_literal(),
+            &self.name.as_string(),
+            self.value.as_string(),
+        ));
+
+        buffer.push(';');
+
+        buffer
     }
 }
 
@@ -88,8 +100,8 @@ impl Node for Identifier {
         &self.token.literal
     }
 
-    fn as_str(&self) -> &str {
-        todo!()
+    fn as_string(&self) -> String {
+        self.value.to_string()
     }
 }
 
@@ -100,7 +112,7 @@ impl Expression for Identifier {
 #[derive(Debug)]
 pub struct ReturnStatement {
     pub token: Token,
-    pub value: Option<Expressions>,
+    pub return_value: Option<Expressions>,
 }
 
 impl Node for ReturnStatement {
@@ -108,8 +120,24 @@ impl Node for ReturnStatement {
         &self.token.literal
     }
 
-    fn as_str(&self) -> &str {
-        todo!()
+    fn as_string(&self) -> String {
+        let mut buffer = String::new();
+
+        buffer.push_str(&format!("{} ", self.token_literal()));
+
+        if self.return_value.is_some() {
+            buffer.push_str(
+                &self
+                    .return_value
+                    .as_ref()
+                    .expect("no return value")
+                    .as_string(),
+            );
+        }
+
+        buffer.push(';');
+
+        buffer
     }
 }
 
@@ -117,4 +145,24 @@ impl Statement for ReturnStatement {
     fn statement_node(&self) {
         todo!()
     }
+}
+
+#[derive(Debug)]
+pub struct ExpressionStatement {
+    token: Token,
+    expression: Expressions,
+}
+
+impl Node for ExpressionStatement {
+    fn token_literal(&self) -> &str {
+        &self.token.literal
+    }
+
+    fn as_string(&self) -> String {
+        self.expression.as_string()
+    }
+}
+
+impl Statement for ExpressionStatement {
+    fn statement_node(&self) {}
 }
