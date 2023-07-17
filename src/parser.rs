@@ -1,13 +1,27 @@
 use std::collections::HashMap;
 
 use crate::{
-    ast::{Expressions, Identifier, LetStatement, Program, ReturnStatement, Statements},
+    ast::{
+        ExpressionStatement, Expressions, Identifier, LetStatement, Program, ReturnStatement,
+        Statements,
+    },
     lexer::Lexer,
     token::{Token, TokenType},
 };
 
-type PrefixParseFn = fn() -> Expressions;
-type InfixParseFn = fn(Expressions) -> Expressions;
+type PrefixParseFn = for<'a> fn(&'a Parser) -> Expressions;
+type InfixParseFn = for<'a> fn(&'a Parser, Expressions) -> Expressions;
+
+#[repr(u8)]
+enum Precedence {
+    Lowest,
+    // Equals,      // ==
+    // Lessgreater, // > or <
+    // Sum,         // +
+    // Product,     // *
+    // Prefix,      // -X or !X
+    // Call,        // myFunction(X)
+}
 
 pub struct Parser {
     lexer: Lexer,
@@ -16,7 +30,7 @@ pub struct Parser {
     errors: Vec<String>,
 
     prefix_parse_fns: HashMap<TokenType, PrefixParseFn>,
-    infix_parse_fns: HashMap<TokenType, PrefixParseFn>,
+    infix_parse_fns: HashMap<TokenType, InfixParseFn>,
 }
 
 impl Parser {
@@ -30,9 +44,22 @@ impl Parser {
             prefix_parse_fns: HashMap::new(),
             infix_parse_fns: HashMap::new(),
         };
+
+        p.prefix_parse_fns
+            .insert(TokenType::IDENT, Parser::parse_identifer);
+
         p.next_token();
         p.next_token();
         p
+    }
+
+    pub fn parse_identifer(&self) -> Expressions {
+        let token = self.cur_token.clone().expect("token not found");
+
+        Expressions::from(Identifier {
+            value: token.literal.clone(),
+            token,
+        })
     }
 
     pub fn peek_error(&mut self, expected: &TokenType) {
@@ -93,7 +120,7 @@ impl Parser {
                 ttype: TokenType::RETURN,
                 literal: _,
             }) => self.parse_return_statement(),
-            _ => None,
+            _ => self.parse_expression_statement(),
         }
     }
 
@@ -162,6 +189,42 @@ impl Parser {
             token: ret_token,
             return_value: None,
         }))
+    }
+
+    fn register_prefix(&mut self, token_type: TokenType, prefix_fn: PrefixParseFn) {
+        self.prefix_parse_fns.insert(token_type, prefix_fn);
+    }
+
+    fn register_infix(&mut self, token_type: TokenType, infix_fn: InfixParseFn) {
+        self.infix_parse_fns.insert(token_type, infix_fn);
+    }
+
+    fn parse_expression_statement(&mut self) -> Option<Statements> {
+        let token = self
+            .cur_token
+            .clone()
+            .expect("no token found on expression statement");
+
+        let Some(expression) = self.parse_expression(Precedence::Lowest) else { return None };
+
+        if self.peek_token_is(&TokenType::SEMICOLON) {
+            self.next_token();
+        }
+
+        Some(Statements::from(ExpressionStatement { token, expression }))
+    }
+
+    fn parse_expression(&self, _lowest: Precedence) -> Option<Expressions> {
+        let Some(&prefix) = self.prefix_parse_fns.get(
+            self
+                .cur_token
+                .as_ref()
+                .map(|t| &t.ttype)
+                .expect("token not found"),
+        ) else { return None };
+        let left_expression = prefix(self);
+
+        Some(left_expression)
     }
 }
 
@@ -303,6 +366,42 @@ mod tests {
 
         if program.to_string() != "let my_var = another_var;" {
             panic!("program.to_string() wrong. got={:?}", program.to_string());
+        }
+    }
+
+    #[test]
+    pub fn test_identifer_expression() {
+        use super::Parser;
+        use crate::{
+            ast::{Expressions, Statements},
+            lexer::Lexer,
+        };
+
+        let input = r#"
+        foobar;
+        "#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        if program.statements.len() != 1 {
+            panic!()
+        }
+
+        for expression in program.statements.iter() {
+            let Statements::ExpStmt(exp_stmt) = expression else { panic!() };
+
+            let Expressions::Ident(ident) = &exp_stmt.expression;
+
+            if ident.value != "foobar" {
+                panic!();
+            }
+
+            if ident.token_literal() != "foobar" {
+                panic!();
+            }
         }
     }
 }
