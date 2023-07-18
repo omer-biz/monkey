@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{
-        ExpressionStatement, Expressions, Identifier, LetStatement, Program, ReturnStatement,
-        Statements,
+        ExpressionStatement, Expressions, Identifier, IntegerLiteral, LetStatement, Program,
+        ReturnStatement, Statements,
     },
     lexer::Lexer,
     token::{Token, TokenType},
 };
 
-type PrefixParseFn = for<'a> fn(&'a Parser) -> Expressions;
+type PrefixParseFn = for<'a> fn(&'a mut Parser) -> Expressions;
 type InfixParseFn = for<'a> fn(&'a Parser, Expressions) -> Expressions;
 
 #[repr(u8)]
@@ -47,17 +47,28 @@ impl Parser {
 
         p.prefix_parse_fns
             .insert(TokenType::IDENT, Parser::parse_identifer);
+        p.prefix_parse_fns
+            .insert(TokenType::INT, Parser::parse_integers);
 
         p.next_token();
         p.next_token();
         p
     }
 
-    pub fn parse_identifer(&self) -> Expressions {
-        let token = self.cur_token.clone().expect("token not found");
+    pub fn parse_identifer(&mut self) -> Expressions {
+        let token = self.cur_token.take().expect("token not found");
 
         Expressions::from(Identifier {
             value: token.literal.clone(),
+            token,
+        })
+    }
+
+    pub fn parse_integers(&mut self) -> Expressions {
+        let token = self.cur_token.take().expect("token not found");
+
+        Expressions::Integ(IntegerLiteral {
+            value: token.literal.parse().expect("can't convert literal"),
             token,
         })
     }
@@ -205,7 +216,7 @@ impl Parser {
             .clone()
             .expect("no token found on expression statement");
 
-        let Some(expression) = self.parse_expression(Precedence::Lowest) else { return None };
+        let expression = self.parse_expression(Precedence::Lowest)?;
 
         if self.peek_token_is(&TokenType::SEMICOLON) {
             self.next_token();
@@ -214,14 +225,13 @@ impl Parser {
         Some(Statements::from(ExpressionStatement { token, expression }))
     }
 
-    fn parse_expression(&self, _lowest: Precedence) -> Option<Expressions> {
-        let Some(&prefix) = self.prefix_parse_fns.get(
-            self
-                .cur_token
+    fn parse_expression(&mut self, _lowest: Precedence) -> Option<Expressions> {
+        let &prefix = self.prefix_parse_fns.get(
+            self.cur_token
                 .as_ref()
                 .map(|t| &t.ttype)
                 .expect("token not found"),
-        ) else { return None };
+        )?;
         let left_expression = prefix(self);
 
         Some(left_expression)
@@ -252,7 +262,7 @@ mod tests {
             panic!("program.statments does not contain 3 statements")
         }
 
-        let exprected_ident = vec!["x", "y", "foobar"];
+        let exprected_ident = ["x", "y", "foobar"];
 
         for (i, ident) in exprected_ident.iter().enumerate() {
             let stmt = program
@@ -379,6 +389,8 @@ mod tests {
 
         let input = r#"
         foobar;
+        barfoo;
+        deadbeef;
         "#;
 
         let lexer = Lexer::new(input);
@@ -386,20 +398,62 @@ mod tests {
         let program = parser.parse_program();
         check_parser_errors(&parser);
 
-        if program.statements.len() != 1 {
+        if program.statements.len() != 3 {
             panic!()
         }
 
-        for expression in program.statements.iter() {
+        let expected_ident = ["foobar", "barfoo", "deadbeef"];
+
+        for (i, expression) in program.statements.iter().enumerate() {
             let Statements::ExpStmt(exp_stmt) = expression else { panic!() };
 
-            let Expressions::Ident(ident) = &exp_stmt.expression;
+            let Expressions::Ident(ident) = &exp_stmt.expression else { panic!() };
 
-            if ident.value != "foobar" {
+            if ident.value != expected_ident[i] {
                 panic!();
             }
 
-            if ident.token_literal() != "foobar" {
+            if ident.token_literal() != expected_ident[i] {
+                panic!();
+            }
+        }
+    }
+
+    #[test]
+    pub fn test_integer_literal_expression() {
+        use super::Parser;
+        use crate::{
+            ast::{Expressions, Statements},
+            lexer::Lexer,
+        };
+
+        let input = r#"
+        10;
+        11;
+        19;
+        "#;
+
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        if program.statements.len() != 3 {
+            panic!()
+        }
+
+        let expected_ident = [10f64, 11f64, 19f64];
+
+        for (i, expression) in program.statements.iter().enumerate() {
+            let Statements::ExpStmt(exp_stmt) = expression else { panic!() };
+
+            let Expressions::Integ(literal) = &exp_stmt.expression else { panic!() };
+
+            if literal.value != expected_ident[i] {
+                panic!();
+            }
+
+            if literal.token_literal() != expected_ident[i].to_string() {
                 panic!();
             }
         }

@@ -31,6 +31,7 @@ pub struct LetStatement {
 #[derive(Debug)]
 pub enum Expressions {
     Ident(Identifier),
+    Integ(IntegerLiteral),
 }
 
 #[derive(Debug)]
@@ -165,4 +166,24 @@ impl Node for ExpressionStatement {
 
 impl Statement for ExpressionStatement {
     fn statement_node(&self) {}
+}
+
+#[derive(Debug)]
+pub struct IntegerLiteral {
+    pub token: Token,
+    pub value: f64,
+}
+
+impl Node for IntegerLiteral {
+    fn token_literal(&self) -> &str {
+        &self.token.literal
+    }
+
+    fn as_string(&self) -> String {
+        self.token.literal.clone()
+    }
+}
+
+impl Expression for IntegerLiteral {
+    fn expression_node(&self) {}
 }
