@@ -32,6 +32,7 @@ pub struct LetStatement {
 pub enum Expressions {
     Ident(Identifier),
     Integ(IntegerLiteral),
+    PrExp(PrefixExpression),
 }
 
 #[derive(Debug)]
@@ -185,5 +186,33 @@ impl Node for IntegerLiteral {
 }
 
 impl Expression for IntegerLiteral {
+    fn expression_node(&self) {}
+}
+
+#[derive(Debug)]
+pub struct PrefixExpression {
+    pub token: Token,
+    pub operator: char,
+    pub right: Box<Expressions>,
+}
+
+impl Node for PrefixExpression {
+    fn token_literal(&self) -> &str {
+        &self.token.literal
+    }
+
+    fn as_string(&self) -> String {
+        let mut buffer = String::new();
+
+        buffer.push('(');
+        buffer.push(self.operator);
+        buffer.push_str(&self.right.as_string());
+        buffer.push('(');
+
+        buffer
+    }
+}
+
+impl Expression for PrefixExpression {
     fn expression_node(&self) {}
 }

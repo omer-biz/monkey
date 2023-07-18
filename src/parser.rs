@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{
-        ExpressionStatement, Expressions, Identifier, IntegerLiteral, LetStatement, Program,
-        ReturnStatement, Statements,
+        ExpressionStatement, Expressions, Identifier, IntegerLiteral, LetStatement,
+        PrefixExpression, Program, ReturnStatement, Statements,
     },
     lexer::Lexer,
     token::{Token, TokenType},
@@ -19,8 +19,8 @@ enum Precedence {
     // Lessgreater, // > or <
     // Sum,         // +
     // Product,     // *
-    // Prefix,      // -X or !X
-    // Call,        // myFunction(X)
+    Prefix, // -X or !X
+            // Call,        // myFunction(X)
 }
 
 pub struct Parser {
@@ -49,10 +49,36 @@ impl Parser {
             .insert(TokenType::IDENT, Parser::parse_identifer);
         p.prefix_parse_fns
             .insert(TokenType::INT, Parser::parse_integers);
+        p.prefix_parse_fns
+            .insert(TokenType::BANG, Parser::parse_prefix_expression);
+        p.prefix_parse_fns
+            .insert(TokenType::MINUS, Parser::parse_prefix_expression);
 
         p.next_token();
         p.next_token();
         p
+    }
+
+    pub fn parse_prefix_expression(&mut self) -> Expressions {
+        let token = self.cur_token.take().expect("no token found");
+
+        let operator = token.literal.chars().nth(0).expect("operator not found");
+        self.next_token();
+        let right = Box::new(
+            self.parse_expression(Precedence::Prefix)
+                .expect("no expression found"),
+        );
+
+        Expressions::from(PrefixExpression {
+            operator,
+            right,
+            token,
+        })
+    }
+
+    pub fn no_prefix_parse_fn_error(&mut self) {
+        let msg = format!("no prefix pare function for {:?} found", self.cur_token);
+        self.errors.push(msg);
     }
 
     pub fn parse_identifer(&mut self) -> Expressions {
@@ -226,12 +252,17 @@ impl Parser {
     }
 
     fn parse_expression(&mut self, _lowest: Precedence) -> Option<Expressions> {
-        let &prefix = self.prefix_parse_fns.get(
-            self.cur_token
-                .as_ref()
-                .map(|t| &t.ttype)
-                .expect("token not found"),
-        )?;
+        let Some(&prefix) = self.prefix_parse_fns.get(
+            self
+            .cur_token
+            .as_mut()
+            .map(|t| &t.ttype)
+            .expect("token not found")
+        ) else {
+            self.no_prefix_parse_fn_error();
+            return None;
+        };
+
         let left_expression = prefix(self);
 
         Some(left_expression)
@@ -239,7 +270,7 @@ impl Parser {
 }
 
 mod tests {
-    use crate::ast::{Node, Statements};
+    use crate::ast::{Expressions, Node, Statements};
 
     #[test]
     pub fn test_let_statements() {
@@ -456,6 +487,67 @@ mod tests {
             if literal.token_literal() != expected_ident[i].to_string() {
                 panic!();
             }
+        }
+    }
+
+    #[test]
+    pub fn test_parsing_prefix_expressions() -> Result<(), ()> {
+        use super::Parser;
+        use crate::{
+            ast::{Expressions, Statements},
+            lexer::Lexer,
+        };
+
+        struct PrefixTest<'a> {
+            pub input: &'a str,
+            pub operator: char,
+            pub integer_value: f64,
+        }
+
+        let prefix_tests = vec![
+            PrefixTest {
+                input: "!5;",
+                operator: '!',
+                integer_value: 5.0,
+            },
+            PrefixTest {
+                input: "-15;",
+                operator: '-',
+                integer_value: 15.0,
+            },
+        ];
+
+        for tt in &prefix_tests {
+            let lexer = Lexer::new(tt.input);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+            check_parser_errors(&parser);
+
+            if program.statements.len() != 1 {
+                panic!()
+            }
+
+            let Statements::ExpStmt(stmt) = program.statements.get(0).ok_or(())? else { panic!() };
+            let Expressions::PrExp(exp) = &stmt.expression else { panic!() };
+
+            if exp.operator != tt.operator {
+                panic!()
+            }
+
+            test_integer_literal(&exp.right, tt.integer_value);
+        }
+
+        Ok(())
+    }
+
+    fn test_integer_literal(right: &Expressions, integer_value: f64) {
+        let Expressions::Integ(integ) = right else { panic!() };
+        if integ.value != integer_value {
+            panic!("expected {} found {}", integer_value, integ.value);
+        }
+
+        if integ.token_literal() != integer_value.to_string() {
+            panic!()
         }
     }
 }
