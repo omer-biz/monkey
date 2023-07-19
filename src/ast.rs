@@ -33,6 +33,7 @@ pub enum Expressions {
     Ident(Identifier),
     Integ(IntegerLiteral),
     PrExp(PrefixExpression),
+    InExp(InfixExpression),
 }
 
 #[derive(Debug)]
@@ -214,5 +215,37 @@ impl Node for PrefixExpression {
 }
 
 impl Expression for PrefixExpression {
+    fn expression_node(&self) {}
+}
+
+#[derive(Debug)]
+pub struct InfixExpression {
+    pub token: Token,
+    pub left: Box<Expressions>,
+    pub operator: String,
+    pub right: Box<Expressions>,
+}
+
+impl Node for InfixExpression {
+    fn token_literal(&self) -> &str {
+        todo!()
+    }
+
+    fn as_string(&self) -> String {
+        let mut buffer = String::new();
+
+        buffer.push('(');
+        buffer.push_str(&self.left.as_string());
+        buffer.push(' ');
+        buffer.push_str(&self.operator);
+        buffer.push(' ');
+        buffer.push_str(&self.right.as_string());
+        buffer.push('(');
+
+        buffer
+    }
+}
+
+impl Expression for InfixExpression {
     fn expression_node(&self) {}
 }

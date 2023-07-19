@@ -1,26 +1,44 @@
+use lazy_static::lazy_static;
 use std::collections::HashMap;
 
 use crate::{
     ast::{
-        ExpressionStatement, Expressions, Identifier, IntegerLiteral, LetStatement,
-        PrefixExpression, Program, ReturnStatement, Statements,
+        ExpressionStatement, Expressions, Identifier, InfixExpression, IntegerLiteral,
+        LetStatement, PrefixExpression, Program, ReturnStatement, Statements,
     },
     lexer::Lexer,
     token::{Token, TokenType},
 };
 
+lazy_static! {
+    static ref PRECEDENCES: HashMap<TokenType, Precedence> = {
+        let mut precedences = HashMap::new();
+        precedences.insert(TokenType::EQ, Precedence::Equals);
+        precedences.insert(TokenType::NEQ, Precedence::Equals);
+        precedences.insert(TokenType::LT, Precedence::Lessgreater);
+        precedences.insert(TokenType::GT, Precedence::Lessgreater);
+        precedences.insert(TokenType::PLUS, Precedence::Sum);
+        precedences.insert(TokenType::MINUS, Precedence::Sum);
+        precedences.insert(TokenType::SLASH, Precedence::Product);
+        precedences.insert(TokenType::ASTRIX, Precedence::Product);
+
+        precedences
+    };
+}
+
 type PrefixParseFn = for<'a> fn(&'a mut Parser) -> Expressions;
-type InfixParseFn = for<'a> fn(&'a Parser, Expressions) -> Expressions;
+type InfixParseFn = for<'a> fn(&'a mut Parser, Expressions) -> Expressions;
 
 #[repr(u8)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum Precedence {
     Lowest,
-    // Equals,      // ==
-    // Lessgreater, // > or <
-    // Sum,         // +
-    // Product,     // *
-    Prefix, // -X or !X
-            // Call,        // myFunction(X)
+    Equals,      // ==
+    Lessgreater, // > or <
+    Sum,         // +
+    Product,     // *
+    Prefix,      // -X or !X
+                 // Call,        // myFunction(X)
 }
 
 pub struct Parser {
@@ -45,27 +63,65 @@ impl Parser {
             infix_parse_fns: HashMap::new(),
         };
 
-        p.prefix_parse_fns
-            .insert(TokenType::IDENT, Parser::parse_identifer);
-        p.prefix_parse_fns
-            .insert(TokenType::INT, Parser::parse_integers);
-        p.prefix_parse_fns
-            .insert(TokenType::BANG, Parser::parse_prefix_expression);
-        p.prefix_parse_fns
-            .insert(TokenType::MINUS, Parser::parse_prefix_expression);
+        p.register_prefix(TokenType::IDENT, Parser::parse_identifer);
+        p.register_prefix(TokenType::INT, Parser::parse_integers);
+        p.register_prefix(TokenType::BANG, Parser::parse_prefix_expression);
+        p.register_prefix(TokenType::MINUS, Parser::parse_prefix_expression);
+
+        p.register_infix(TokenType::PLUS, Parser::parse_infix_expression);
+        p.register_infix(TokenType::MINUS, Parser::parse_infix_expression);
+        p.register_infix(TokenType::SLASH, Parser::parse_infix_expression);
+        p.register_infix(TokenType::ASTRIX, Parser::parse_infix_expression);
+        p.register_infix(TokenType::EQ, Parser::parse_infix_expression);
+        p.register_infix(TokenType::NEQ, Parser::parse_infix_expression);
+        p.register_infix(TokenType::LT, Parser::parse_infix_expression);
+        p.register_infix(TokenType::GT, Parser::parse_infix_expression);
 
         p.next_token();
         p.next_token();
         p
     }
 
+    pub fn parse_infix_expression(&mut self, left: Expressions) -> Expressions {
+        let precedence = self.cur_precedence();
+        let token = self.cur_token.take().expect("no token found");
+        let operator = token.literal.to_string();
+
+        self.next_token();
+
+        let right = self
+            .parse_expression(precedence)
+            .expect("no right expression found");
+
+        Expressions::from(InfixExpression {
+            left: Box::new(left),
+            right: Box::new(right),
+            operator,
+            token,
+        })
+    }
+
+    fn token_precedence<'precedence>(tt: Option<&Token>) -> &'precedence Precedence {
+        PRECEDENCES
+            .get(tt.as_ref().map(|t| &t.ttype).unwrap_or(&TokenType::EOF))
+            .unwrap_or(&Precedence::Lowest)
+    }
+
+    fn peek_precedence<'precedence>(&self) -> &'precedence Precedence {
+        Parser::token_precedence(self.peek_token.as_ref())
+    }
+
+    fn cur_precedence<'precedence>(&self) -> &'precedence Precedence {
+        Parser::token_precedence(self.cur_token.as_ref())
+    }
+
     pub fn parse_prefix_expression(&mut self) -> Expressions {
         let token = self.cur_token.take().expect("no token found");
 
-        let operator = token.literal.chars().nth(0).expect("operator not found");
+        let operator = token.literal.chars().next().expect("operator not found");
         self.next_token();
         let right = Box::new(
-            self.parse_expression(Precedence::Prefix)
+            self.parse_expression(&Precedence::Prefix)
                 .expect("no expression found"),
         );
 
@@ -242,7 +298,7 @@ impl Parser {
             .clone()
             .expect("no token found on expression statement");
 
-        let expression = self.parse_expression(Precedence::Lowest)?;
+        let expression = self.parse_expression(&Precedence::Lowest)?;
 
         if self.peek_token_is(&TokenType::SEMICOLON) {
             self.next_token();
@@ -251,7 +307,7 @@ impl Parser {
         Some(Statements::from(ExpressionStatement { token, expression }))
     }
 
-    fn parse_expression(&mut self, _lowest: Precedence) -> Option<Expressions> {
+    fn parse_expression(&mut self, precedence: &Precedence) -> Option<Expressions> {
         let Some(&prefix) = self.prefix_parse_fns.get(
             self
             .cur_token
@@ -263,7 +319,23 @@ impl Parser {
             return None;
         };
 
-        let left_expression = prefix(self);
+        let mut left_expression = prefix(self);
+        println!("left {:?}", left_expression);
+
+        while !self.peek_token_is(&TokenType::SEMICOLON) && precedence < self.peek_precedence() {
+            let Some(&infix) = self.infix_parse_fns.get(
+                self.peek_token
+                    .as_mut()
+                    .map(|t| &t.ttype)
+                    .expect("token not found"),
+            ) else {
+                return Some(left_expression);
+            };
+
+            self.next_token();
+            left_expression = infix(self, left_expression);
+            println!("left-> {:?}", left_expression);
+        }
 
         Some(left_expression)
     }
@@ -540,6 +612,7 @@ mod tests {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn test_integer_literal(right: &Expressions, integer_value: f64) {
         let Expressions::Integ(integ) = right else { panic!() };
         if integ.value != integer_value {
@@ -548,6 +621,47 @@ mod tests {
 
         if integ.token_literal() != integer_value.to_string() {
             panic!()
+        }
+    }
+
+    #[test]
+    fn test_parsing_infix_expressions() {
+        use super::Parser;
+        use crate::{
+            ast::{Expressions, Statements},
+            lexer::Lexer,
+        };
+
+        let infix_tests = [
+            ("5 + 5;", 5.0, "+", 5.0),
+            ("5 - 5;", 5.0, "-", 5.0),
+            ("5 * 5;", 5.0, "*", 5.0),
+            ("5 / 5;", 5.0, "/", 5.0),
+            ("5 > 5;", 5.0, ">", 5.0),
+            ("5 < 5;", 5.0, "<", 5.0),
+            ("5 == 5;", 5.0, "==", 5.0),
+            ("5 != 5;", 5.0, "!=", 5.0),
+        ];
+
+        for (input, left_value, operator, right_value) in infix_tests {
+            let l = Lexer::new(&input);
+            let mut p = Parser::new(l);
+            let program = p.parse_program();
+            check_parser_errors(&p);
+
+            assert_eq!(
+                program.statements.len(),
+                1,
+                "program.statements does not contain 1 statement"
+            );
+
+            let Statements::ExpStmt(stmt) = &program.statements[0] else { panic!("program.statements[0] is not ast.ExpressionStatement") };
+
+            let Expressions::InExp(exp) = &stmt.expression else { panic!("exp is not ast.InfixExpression") };
+
+            test_integer_literal(&exp.left, left_value);
+            assert_eq!(exp.operator, operator, "exp.Operator is not '{}'", operator);
+            test_integer_literal(&exp.right, right_value);
         }
     }
 }
