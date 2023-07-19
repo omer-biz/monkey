@@ -208,7 +208,7 @@ impl Node for PrefixExpression {
         buffer.push('(');
         buffer.push(self.operator);
         buffer.push_str(&self.right.as_string());
-        buffer.push('(');
+        buffer.push(')');
 
         buffer
     }
@@ -240,7 +240,7 @@ impl Node for InfixExpression {
         buffer.push_str(&self.operator);
         buffer.push(' ');
         buffer.push_str(&self.right.as_string());
-        buffer.push('(');
+        buffer.push(')');
 
         buffer
     }
