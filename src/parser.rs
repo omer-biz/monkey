@@ -664,4 +664,37 @@ mod tests {
             test_integer_literal(&exp.right, right_value);
         }
     }
+
+    #[test]
+    fn test_operator_precedence_parsing() {
+        use super::Parser;
+        use crate::lexer::Lexer;
+
+        let tests = [
+            ("-a * b", "((-a) * b)"),
+            ("!-a", "(!(-a))"),
+            ("a + b + c", "((a + b) + c)"),
+            ("a + b - c", "((a + b) - c)"),
+            ("a * b * c", "((a * b) * c)"),
+            ("a * b / c", "((a * b) / c)"),
+            ("a + b / c", "(a + (b / c))"),
+            ("a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"),
+            ("3 + 4; -5 * 5", "(3 + 4)((-5) * 5)"),
+            ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
+            ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"),
+            (
+                "3 + 4 * 5 == 3 * 1 + 4 * 5",
+                "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+            ),
+        ];
+
+        for (input, expected) in tests {
+            let l = Lexer::new(input);
+            let mut p = Parser::new(l);
+            let program = p.parse_program();
+            check_parser_errors(&p);
+            let actual = program.to_string();
+            assert_eq!(actual, expected.to_string());
+        }
+    }
 }
