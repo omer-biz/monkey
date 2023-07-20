@@ -43,7 +43,7 @@ pub enum TokenType {
     SEMICOLON,
     ILLEGAL,
     EOF,
-    INT,
+    NUM,
 
     IF,
     EQ,

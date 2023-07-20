@@ -82,7 +82,7 @@ impl Lexer {
                     let literal = self.read_identifier();
                     return Some(Token::new(Token::lookup_ident(&literal), &literal));
                 } else if oth.is_ascii_digit() {
-                    return Some(Token::new(TokenType::INT, &self.read_number()));
+                    return Some(Token::new(TokenType::NUM, &self.read_number()));
                 } else {
                     Token::new(TokenType::ILLEGAL, &self.ch.to_string())
                 }
@@ -121,7 +121,7 @@ impl Lexer {
     fn read_number(&mut self) -> String {
         let old_pos = self.position;
 
-        while self.ch.is_ascii_digit() {
+        while self.ch.is_ascii_digit() || self.ch == '.' {
             self.next_char();
         }
 
@@ -178,19 +178,20 @@ if (5 > 10) {
 
 10 != 9;
 10 == 10;
+1.101 != 2.202;
 "#;
 
         let expected_tokens = vec![
             Some(Token::new(TokenType::LET, "let")),
             Some(Token::new(TokenType::IDENT, "five")),
             Some(Token::new(TokenType::ASSIGN, "=")),
-            Some(Token::new(TokenType::INT, "5")),
+            Some(Token::new(TokenType::NUM, "5")),
             Some(Token::new(TokenType::SEMICOLON, ";")),
             //
             Some(Token::new(TokenType::LET, "let")),
             Some(Token::new(TokenType::IDENT, "ten")),
             Some(Token::new(TokenType::ASSIGN, "=")),
-            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::NUM, "10")),
             Some(Token::new(TokenType::SEMICOLON, ";")),
             //
             Some(Token::new(TokenType::LET, "let")),
@@ -226,21 +227,21 @@ if (5 > 10) {
             Some(Token::new(TokenType::MINUS, "-")),
             Some(Token::new(TokenType::SLASH, "/")),
             Some(Token::new(TokenType::ASTRIX, "*")),
-            Some(Token::new(TokenType::INT, "5")),
+            Some(Token::new(TokenType::NUM, "5")),
             Some(Token::new(TokenType::SEMICOLON, ";")),
             //
-            Some(Token::new(TokenType::INT, "5")),
+            Some(Token::new(TokenType::NUM, "5")),
             Some(Token::new(TokenType::LT, "<")),
-            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::NUM, "10")),
             Some(Token::new(TokenType::GT, ">")),
-            Some(Token::new(TokenType::INT, "5")),
+            Some(Token::new(TokenType::NUM, "5")),
             Some(Token::new(TokenType::SEMICOLON, ";")),
             //
             Some(Token::new(TokenType::IF, "if")),
             Some(Token::new(TokenType::LPAREN, "(")),
-            Some(Token::new(TokenType::INT, "5")),
+            Some(Token::new(TokenType::NUM, "5")),
             Some(Token::new(TokenType::GT, ">")),
-            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::NUM, "10")),
             Some(Token::new(TokenType::RPAREN, ")")),
             Some(Token::new(TokenType::LCURL, "{")),
             //
@@ -258,14 +259,19 @@ if (5 > 10) {
             //
             Some(Token::new(TokenType::RCURL, "}")),
             //
-            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::NUM, "10")),
             Some(Token::new(TokenType::NEQ, "!=")),
-            Some(Token::new(TokenType::INT, "9")),
+            Some(Token::new(TokenType::NUM, "9")),
             Some(Token::new(TokenType::SEMICOLON, ";")),
             //
-            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::NUM, "10")),
             Some(Token::new(TokenType::EQ, "==")),
-            Some(Token::new(TokenType::INT, "10")),
+            Some(Token::new(TokenType::NUM, "10")),
+            Some(Token::new(TokenType::SEMICOLON, ";")),
+            //
+            Some(Token::new(TokenType::NUM, "1.101")),
+            Some(Token::new(TokenType::EQ, "!=")),
+            Some(Token::new(TokenType::NUM, "2.202")),
             Some(Token::new(TokenType::SEMICOLON, ";")),
             //
             None,
