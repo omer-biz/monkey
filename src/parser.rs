@@ -71,6 +71,8 @@ impl Parser {
         p.register_prefix(TokenType::TRUE, Parser::parse_boolean);
         p.register_prefix(TokenType::FALSE, Parser::parse_boolean);
 
+        p.register_prefix(TokenType::LPAREN, Parser::parse_grouped_expression);
+
         p.register_infix(TokenType::PLUS, Parser::parse_infix_expression);
         p.register_infix(TokenType::MINUS, Parser::parse_infix_expression);
         p.register_infix(TokenType::SLASH, Parser::parse_infix_expression);
@@ -83,6 +85,19 @@ impl Parser {
         p.next_token();
         p.next_token();
         p
+    }
+
+    pub fn parse_grouped_expression(&mut self) -> Expressions {
+        self.next_token();
+        let exp = self
+            .parse_expression(&Precedence::Lowest)
+            .expect("could not parse input");
+
+        if !self.expect_peek_is(TokenType::RPAREN) {
+            panic!("no left paren found")
+        }
+
+        return exp;
     }
 
     pub fn parse_boolean(&mut self) -> Expressions {
