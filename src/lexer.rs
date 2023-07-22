@@ -270,7 +270,7 @@ if (5 > 10) {
             Some(Token::new(TokenType::SEMICOLON, ";")),
             //
             Some(Token::new(TokenType::NUM, "1.101")),
-            Some(Token::new(TokenType::EQ, "!=")),
+            Some(Token::new(TokenType::NEQ, "!=")),
             Some(Token::new(TokenType::NUM, "2.202")),
             Some(Token::new(TokenType::SEMICOLON, ";")),
             //
@@ -282,8 +282,7 @@ if (5 > 10) {
         for expected in expected_tokens.iter() {
             let tok = lex.next_token();
             if &tok != expected {
-                println!("Expected: {:?}", expected);
-                println!("Got: {:?}\n", tok);
+                panic!("Expected: {:?} Got: {:?}\n", expected, tok);
             }
         }
     }

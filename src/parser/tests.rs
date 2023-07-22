@@ -1,4 +1,11 @@
-use crate::ast::{Expression, Expressions, Node, Statements};
+use std::fmt::Display;
+
+use crate::{
+    ast::{ExpressionStatement, Expressions, Node, Statements},
+    lexer::Lexer,
+};
+
+use super::Parser;
 
 #[test]
 pub fn test_let_statements() {
@@ -363,6 +370,7 @@ fn test_operator_precedence_parsing() {
     }
 }
 
+#[allow(dead_code)]
 fn test_identifer(exp: &Expressions, value: &str) {
     let Expressions::Ident( ident ) = exp else { panic!() };
 
@@ -412,5 +420,79 @@ pub fn test_boolean_expression() {
         if literal.token_literal() != expected_ident[i].to_string() {
             panic!();
         }
+    }
+}
+
+#[test]
+pub fn test_if_expression() {
+    let input = "if (x < y) { x }";
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    check_parser_errors(&parser);
+
+    if program.statements.len() != 1 {
+        panic!()
+    }
+
+    let Statements::ExpStmt(stmt) = &program.statements[0] else { panic!() };
+    let Expressions::IFExp(exp) = &stmt.expression else { panic!(); };
+    test_infix_expressions(&exp.condition, "x", "<", "y");
+
+    if exp.consequence.statements.len() != 1 {
+        panic!();
+    }
+
+    let Statements::ExpStmt(consequence) = &exp.consequence.statements[0] else { panic!() };
+
+    if consequence.as_string() != "x" {
+        panic!();
+    }
+
+    if exp.alternative.is_some() {
+        panic!();
+    }
+
+    let input = "if (x < y) { x } else { y }";
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    check_parser_errors(&parser);
+
+    let Statements::ExpStmt(stmt) = &program.statements[0] else { panic!() };
+    let Expressions::IFExp(exp) = &stmt.expression else { panic!(); };
+
+    if let Some(alt) = &exp.alternative {
+        let Statements::ExpStmt(consequence) = &alt.statements[0] else { panic!() };
+
+        if consequence.as_string() != "y" {
+            panic!();
+        }
+    }
+}
+
+fn test_infix_expressions(
+    condition: &Box<Expressions>,
+    left: impl Display,
+    operator: impl Display,
+    right: impl Display,
+) {
+    let Expressions::InExp(op_exp) = condition.as_ref() else { panic!() };
+    if op_exp.operator != operator.to_string() {
+        panic!();
+    }
+
+    if op_exp.left.as_string() != left.to_string() {
+        panic!()
+    }
+
+    if op_exp.right.as_string() != right.to_string() {
+        panic!()
+    }
+
+    if op_exp.operator != operator.to_string() {
+        panic!()
     }
 }

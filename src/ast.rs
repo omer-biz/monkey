@@ -35,6 +35,7 @@ pub enum Expressions {
     PrExp(PrefixExpression),
     InExp(InfixExpression),
     Boole(Boolean),
+    IFExp(IfExpression),
 }
 
 #[derive(Debug)]
@@ -66,6 +67,7 @@ pub enum Statements {
     LetStmt(LetStatement),
     RetStmt(ReturnStatement),
     ExpStmt(ExpressionStatement),
+    BlcStmt(BlockStatement),
 }
 
 impl Node for LetStatement {
@@ -269,4 +271,63 @@ impl Node for Boolean {
 
 impl Expression for Boolean {
     fn expression_node(&self) {}
+}
+
+#[derive(Debug)]
+pub struct IfExpression {
+    pub token: Token,
+    pub condition: Box<Expressions>,
+    pub consequence: BlockStatement,
+    pub alternative: Option<BlockStatement>,
+}
+
+impl Node for IfExpression {
+    fn token_literal(&self) -> &str {
+        &self.token.literal
+    }
+
+    fn as_string(&self) -> String {
+        let mut buffer = String::new();
+
+        buffer.push_str("if");
+        buffer.push_str(&self.condition.as_string());
+        buffer.push(' ');
+        buffer.push_str(&self.consequence.as_string());
+
+        if let Some(alt) = self.alternative.as_ref() {
+            buffer.push_str("else ");
+            buffer.push_str(&alt.as_string())
+        }
+
+        buffer
+    }
+}
+impl Expression for IfExpression {
+    fn expression_node(&self) {}
+}
+
+#[derive(Debug)]
+pub struct BlockStatement {
+    pub token: Token,
+    pub statements: Vec<Statements>,
+}
+
+impl Node for BlockStatement {
+    fn token_literal(&self) -> &str {
+        &self.token.literal
+    }
+
+    fn as_string(&self) -> String {
+        let mut buffer = String::new();
+
+        for stmt in self.statements.iter() {
+            buffer.push_str(&stmt.as_string());
+        }
+
+        buffer
+    }
+}
+
+impl Statement for BlockStatement {
+    fn statement_node(&self) {}
 }

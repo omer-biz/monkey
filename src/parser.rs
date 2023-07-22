@@ -3,8 +3,9 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{
-        Boolean, ExpressionStatement, Expressions, Identifier, InfixExpression, IntegerLiteral,
-        LetStatement, PrefixExpression, Program, ReturnStatement, Statements,
+        BlockStatement, Boolean, ExpressionStatement, Expressions, Identifier, IfExpression,
+        InfixExpression, IntegerLiteral, LetStatement, PrefixExpression, Program, ReturnStatement,
+        Statements,
     },
     lexer::Lexer,
     token::{Token, TokenType},
@@ -73,6 +74,8 @@ impl Parser {
 
         p.register_prefix(TokenType::LPAREN, Parser::parse_grouped_expression);
 
+        p.register_prefix(TokenType::IF, Parser::parse_if_expression);
+
         p.register_infix(TokenType::PLUS, Parser::parse_infix_expression);
         p.register_infix(TokenType::MINUS, Parser::parse_infix_expression);
         p.register_infix(TokenType::SLASH, Parser::parse_infix_expression);
@@ -85,6 +88,48 @@ impl Parser {
         p.next_token();
         p.next_token();
         p
+    }
+
+    pub fn parse_if_expression(&mut self) -> Expressions {
+        let token = self.cur_token.take().expect("token not found");
+
+        if !self.expect_peek_is(TokenType::LPAREN) {
+            panic!();
+        }
+        self.next_token();
+
+        let condition = self
+            .parse_expression(&Precedence::Lowest)
+            .expect("no expressions found");
+
+        if !self.expect_peek_is(TokenType::RPAREN) {
+            panic!()
+        }
+
+        if !self.expect_peek_is(TokenType::LCURL) {
+            panic!()
+        }
+
+        let consequence = self.parse_block_statement();
+
+        let alternative = if self.peek_token_is(&TokenType::ELSE) {
+            self.next_token();
+
+            if !self.expect_peek_is(TokenType::LCURL) {
+                None
+            } else {
+                Some(self.parse_block_statement())
+            }
+        } else {
+            None
+        };
+
+        Expressions::from(IfExpression {
+            condition: Box::new(condition),
+            consequence,
+            alternative,
+            token,
+        })
     }
 
     pub fn parse_grouped_expression(&mut self) -> Expressions {
@@ -360,6 +405,22 @@ impl Parser {
         }
 
         Some(left_expression)
+    }
+
+    fn parse_block_statement(&mut self) -> crate::ast::BlockStatement {
+        let token = self.cur_token.take().expect("no token found");
+        let mut statements = vec![];
+
+        self.next_token();
+
+        while !self.cur_token_is(&TokenType::RCURL) && !self.cur_token_is(&TokenType::EOF) {
+            if let Some(stmt) = self.parse_statement() {
+                statements.push(stmt)
+            }
+            self.next_token();
+        }
+
+        BlockStatement { token, statements }
     }
 }
 
