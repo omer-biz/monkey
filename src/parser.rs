@@ -3,9 +3,9 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{
-        BlockStatement, Boolean, ExpressionStatement, Expressions, Identifier, IfExpression,
-        InfixExpression, IntegerLiteral, LetStatement, PrefixExpression, Program, ReturnStatement,
-        Statements,
+        BlockStatement, Boolean, ExpressionStatement, Expressions, FunctionLiteral, Identifier,
+        IfExpression, InfixExpression, IntegerLiteral, LetStatement, PrefixExpression, Program,
+        ReturnStatement, Statements,
     },
     lexer::Lexer,
     token::{Token, TokenType},
@@ -75,6 +75,7 @@ impl Parser {
         p.register_prefix(TokenType::LPAREN, Parser::parse_grouped_expression);
 
         p.register_prefix(TokenType::IF, Parser::parse_if_expression);
+        p.register_prefix(TokenType::FUNCTION, Parser::parse_function_literal);
 
         p.register_infix(TokenType::PLUS, Parser::parse_infix_expression);
         p.register_infix(TokenType::MINUS, Parser::parse_infix_expression);
@@ -88,6 +89,27 @@ impl Parser {
         p.next_token();
         p.next_token();
         p
+    }
+
+    pub fn parse_function_literal(&mut self) -> Expressions {
+        let token = self.cur_token.take().expect("token not found");
+        if !self.expect_peek_is(TokenType::LPAREN) {
+            panic!()
+        }
+
+        let parameters = self.parse_function_parameters();
+
+        if !self.expect_peek_is(TokenType::LCURL) {
+            panic!()
+        }
+
+        let body = self.parse_block_statement();
+
+        Expressions::from(FunctionLiteral {
+            token,
+            parameters,
+            body,
+        })
     }
 
     pub fn parse_if_expression(&mut self) -> Expressions {
@@ -139,6 +161,7 @@ impl Parser {
             .expect("could not parse input");
 
         if !self.expect_peek_is(TokenType::RPAREN) {
+            println!("exp: {exp:#?}");
             panic!("no left paren found")
         }
 
@@ -421,6 +444,45 @@ impl Parser {
         }
 
         BlockStatement { token, statements }
+    }
+
+    fn parse_function_parameters(&mut self) -> Vec<Identifier> {
+        let mut identifiers = vec![];
+
+        if self.peek_token_is(&TokenType::RPAREN) {
+            println!("cur tok: {:#?}", self.cur_token);
+            println!("pek tok: {:#?}", self.peek_token);
+            self.next_token();
+            return identifiers;
+        }
+
+        self.next_token();
+
+        let token = self.cur_token.take().expect("no identifer found");
+        let ident = Identifier {
+            value: token.literal.clone(),
+            token,
+        };
+        identifiers.push(ident);
+
+        while self.peek_token_is(&TokenType::COMMA) {
+            self.next_token();
+            self.next_token();
+
+            let token = self.cur_token.take().expect("no identifer found");
+            let ident = Identifier {
+                value: token.literal.clone(),
+                token,
+            };
+
+            identifiers.push(ident);
+        }
+
+        if !self.expect_peek_is(TokenType::RPAREN) {
+            panic!("no right paren found");
+        }
+
+        identifiers
     }
 }
 

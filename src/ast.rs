@@ -36,6 +36,7 @@ pub enum Expressions {
     InExp(InfixExpression),
     Boole(Boolean),
     IFExp(IfExpression),
+    FnLit(FunctionLiteral),
 }
 
 #[derive(Debug)]
@@ -330,4 +331,38 @@ impl Node for BlockStatement {
 
 impl Statement for BlockStatement {
     fn statement_node(&self) {}
+}
+
+#[derive(Debug)]
+pub struct FunctionLiteral {
+    pub token: Token,
+    pub parameters: Vec<Identifier>,
+    pub body: BlockStatement,
+}
+
+impl Node for FunctionLiteral {
+    fn token_literal(&self) -> &str {
+        &self.token.literal
+    }
+
+    fn as_string(&self) -> String {
+        let mut buffer = String::new();
+
+        let mut params = vec![];
+        for p in self.parameters.iter() {
+            params.push(p.as_string());
+        }
+
+        buffer.push_str(self.token_literal());
+        buffer.push('(');
+        buffer.push_str(&params.join(", "));
+        buffer.push_str(") ");
+        buffer.push_str(&self.body.as_string());
+
+        buffer
+    }
+}
+
+impl Expression for FunctionLiteral {
+    fn expression_node(&self) {}
 }

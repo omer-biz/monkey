@@ -474,25 +474,67 @@ pub fn test_if_expression() {
 }
 
 fn test_infix_expressions(
-    condition: &Box<Expressions>,
+    condition: &Expressions,
     left: impl Display,
     operator: impl Display,
     right: impl Display,
 ) {
-    let Expressions::InExp(op_exp) = condition.as_ref() else { panic!() };
-    if op_exp.operator != operator.to_string() {
-        panic!();
-    }
+    let Expressions::InExp(op_exp) = condition else { panic!() };
 
-    if op_exp.left.as_string() != left.to_string() {
-        panic!()
-    }
+    assert!(op_exp.operator == operator.to_string());
+    assert!(op_exp.left.as_string() == left.to_string());
+    assert!(op_exp.right.as_string() == right.to_string());
+    assert!(op_exp.operator == operator.to_string());
+}
 
-    if op_exp.right.as_string() != right.to_string() {
-        panic!()
-    }
+#[test]
+fn test_function_literal_parsing() {
+    let input = r#"fn(x, y) { x + y; }"#;
 
-    if op_exp.operator != operator.to_string() {
-        panic!()
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    check_parser_errors(&parser);
+
+    assert!(program.statements.len() == 1);
+
+    let Statements::ExpStmt(exp) = &program.statements[0] else { panic!() };
+    let Expressions::FnLit(function) = &exp.expression else { panic!() };
+
+    assert!(
+        function.parameters.len() == 2,
+        "unexpected number function parameters"
+    );
+
+    let Statements::ExpStmt(body_stmt) = &function.body.statements[0] else { panic!() };
+    test_infix_expressions(&body_stmt.expression, "x", "+", "y");
+}
+
+#[test]
+fn test_function_parameters_parsing() {
+    let test = [
+        ("fn() {};", vec![]),
+        ("fn(x) {};", vec!["x"]),
+        ("fn(x, y, z) {};", vec!["x", "y", "z"]),
+    ];
+
+    for (input, expected) in test {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        let Statements::ExpStmt(stmt) = &program.statements[0] else { panic!() };
+        let Expressions::FnLit(function) = &stmt.expression else { panic!() };
+
+        assert!(
+            function.parameters.len() == expected.len(),
+            "unexpected number function parameters"
+        );
+
+        for (i, ident) in expected.iter().enumerate() {
+            let p = &function.parameters[i];
+            assert!(ident.eq(&p.value), "unexpected identifier");
+        }
     }
 }
