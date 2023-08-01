@@ -24,9 +24,10 @@ pub fn test_let_statements() {
     let program = parser.parse_program();
     check_parser_errors(&parser);
 
-    if program.statements.len() != 3 {
-        panic!("program.statments does not contain 3 statements")
-    }
+    assert!(
+        program.statements.len() == 3,
+        "program.statments does not contain 3 statements"
+    );
 
     let exprected_ident = ["x", "y", "foobar"];
 
@@ -55,18 +56,20 @@ fn check_parser_errors(parser: &super::Parser) {
 
 #[allow(dead_code)]
 pub fn test_let_statement(stmt: &Statements, ident: &str) {
-    if stmt.token_literal() != "let" {
-        panic!("stmt.token_literal not 'let'. got={}", stmt.token_literal())
-    }
+    assert!(
+        stmt.token_literal() == "let",
+        "stmt.token_literal not 'let'. got={}",
+        stmt.token_literal()
+    );
 
     let Statements::LetStmt(let_stmt) = stmt else { panic!("Statment not `LetStatment`") };
 
-    if let_stmt.name.value != ident {
-        panic!(
-            "let_stmt.name.value not {} got {}",
-            ident, let_stmt.name.value
-        );
-    }
+    assert!(
+        let_stmt.name.value == ident,
+        "let_stmt.name.value not {} got {}",
+        ident,
+        let_stmt.name.value
+    );
 
     if let_stmt.name.token_literal() != ident {
         panic!(
@@ -95,18 +98,18 @@ pub fn test_return_statements() {
     let program = parser.parse_program();
     check_parser_errors(&parser);
 
-    if program.statements.len() != 4 {
-        panic!("program.statments does not contain 4 statements")
-    }
+    assert!(
+        program.statements.len() == 4,
+        "program.statments does not contain 4 statements"
+    );
 
     for stmt in program.statements.iter() {
         let Statements::RetStmt(return_statement) = stmt else { panic!("not return statement got {:?}", stmt) };
-        if return_statement.token_literal() != "return" {
-            panic!(
-                "return_statement.token_literal() not `return` got {:?}",
-                return_statement.token_literal()
-            )
-        }
+        assert!(
+            return_statement.token_literal() == "return",
+            "return_statement.token_literal() not `return` got {:?}",
+            return_statement.token_literal()
+        );
     }
 }
 
@@ -140,9 +143,11 @@ pub fn test_as_string() {
         })],
     };
 
-    if program.to_string() != "let my_var = another_var;" {
-        panic!("program.to_string() wrong. got={:?}", program.to_string());
-    }
+    assert!(
+        program.to_string() == "let my_var = another_var;",
+        "program.to_string() wrong. got={:?}",
+        program.to_string()
+    )
 }
 
 #[test]
@@ -164,9 +169,7 @@ pub fn test_identifer_expression() {
     let program = parser.parse_program();
     check_parser_errors(&parser);
 
-    if program.statements.len() != 3 {
-        panic!()
-    }
+    assert!(program.statements.len() == 3);
 
     let expected_ident = ["foobar", "barfoo", "deadbeef"];
 
@@ -175,13 +178,8 @@ pub fn test_identifer_expression() {
 
         let Expressions::Ident(ident) = &exp_stmt.expression else { panic!() };
 
-        if ident.value != expected_ident[i] {
-            panic!();
-        }
-
-        if ident.token_literal() != expected_ident[i] {
-            panic!();
-        }
+        assert!(ident.value == expected_ident[i]);
+        assert!(ident.token_literal() == expected_ident[i]);
     }
 }
 
@@ -204,9 +202,7 @@ pub fn test_integer_literal_expression() {
     let program = parser.parse_program();
     check_parser_errors(&parser);
 
-    if program.statements.len() != 3 {
-        panic!()
-    }
+    assert!(program.statements.len() == 3);
 
     let expected_ident = [10f64, 11f64, 19f64];
 
@@ -215,13 +211,9 @@ pub fn test_integer_literal_expression() {
 
         let Expressions::Integ(literal) = &exp_stmt.expression else { panic!() };
 
-        if literal.value != expected_ident[i] {
-            panic!();
-        }
+        assert!(literal.value == expected_ident[i]);
 
-        if literal.token_literal() != expected_ident[i].to_string() {
-            panic!();
-        }
+        assert!(literal.token_literal() == expected_ident[i].to_string());
     }
 }
 
@@ -258,17 +250,12 @@ pub fn test_parsing_prefix_expressions() -> Result<(), ()> {
         let program = parser.parse_program();
         check_parser_errors(&parser);
 
-        if program.statements.len() != 1 {
-            panic!()
-        }
+        assert!(program.statements.len() == 1);
 
         let Statements::ExpStmt(stmt) = program.statements.get(0).ok_or(())? else { panic!() };
         let Expressions::PrExp(exp) = &stmt.expression else { panic!() };
 
-        if exp.operator != tt.operator {
-            panic!()
-        }
-
+        assert!(exp.operator == tt.operator);
         test_integer_literal(&exp.right, tt.integer_value);
     }
 
@@ -278,13 +265,14 @@ pub fn test_parsing_prefix_expressions() -> Result<(), ()> {
 #[allow(dead_code)]
 fn test_integer_literal(right: &Expressions, integer_value: f64) {
     let Expressions::Integ(integ) = right else { panic!() };
-    if integ.value != integer_value {
-        panic!("expected {} found {}", integer_value, integ.value);
-    }
+    assert!(
+        integ.value == integer_value,
+        "expected {} found {}",
+        integer_value,
+        integ.value
+    );
 
-    if integ.token_literal() != integer_value.to_string() {
-        panic!()
-    }
+    assert!(integ.token_literal() == integer_value.to_string());
 }
 
 #[test]
@@ -374,13 +362,8 @@ fn test_operator_precedence_parsing() {
 fn test_identifer(exp: &Expressions, value: &str) {
     let Expressions::Ident( ident ) = exp else { panic!() };
 
-    if ident.value != value {
-        panic!()
-    }
-
-    if ident.token_literal() != value {
-        panic!()
-    }
+    assert!(ident.value == value);
+    assert!(ident.token_literal() == value);
 }
 
 #[test]
@@ -402,9 +385,7 @@ pub fn test_boolean_expression() {
     let program = parser.parse_program();
     check_parser_errors(&parser);
 
-    if program.statements.len() != 3 {
-        panic!()
-    }
+    assert!(program.statements.len() == 3);
 
     let expected_ident = [true, false, false];
 
@@ -413,13 +394,9 @@ pub fn test_boolean_expression() {
 
         let Expressions::Boole(literal) = &exp_stmt.expression else { panic!() };
 
-        if literal.value != expected_ident[i] {
-            panic!();
-        }
+        assert!(literal.value == expected_ident[i]);
 
-        if literal.token_literal() != expected_ident[i].to_string() {
-            panic!();
-        }
+        assert!(literal.token_literal() == expected_ident[i].to_string());
     }
 }
 
@@ -432,27 +409,19 @@ pub fn test_if_expression() {
     let program = parser.parse_program();
     check_parser_errors(&parser);
 
-    if program.statements.len() != 1 {
-        panic!()
-    }
+    assert!(program.statements.len() == 1);
 
     let Statements::ExpStmt(stmt) = &program.statements[0] else { panic!() };
     let Expressions::IFExp(exp) = &stmt.expression else { panic!(); };
     test_infix_expressions(&exp.condition, "x", "<", "y");
 
-    if exp.consequence.statements.len() != 1 {
-        panic!();
-    }
+    assert!(exp.consequence.statements.len() == 1);
 
     let Statements::ExpStmt(consequence) = &exp.consequence.statements[0] else { panic!() };
 
-    if consequence.as_string() != "x" {
-        panic!();
-    }
+    assert!(consequence.as_string() == "x");
 
-    if exp.alternative.is_some() {
-        panic!();
-    }
+    assert!(exp.alternative.is_none());
 
     let input = "if (x < y) { x } else { y }";
 
@@ -467,9 +436,7 @@ pub fn test_if_expression() {
     if let Some(alt) = &exp.alternative {
         let Statements::ExpStmt(consequence) = &alt.statements[0] else { panic!() };
 
-        if consequence.as_string() != "y" {
-            panic!();
-        }
+        assert!(consequence.as_string() == "y");
     }
 }
 
