@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use crate::{
-    ast::{ExpressionStatement, Expressions, Node, Statements},
+    ast::{Expressions, Node, Statements},
     lexer::Lexer,
 };
 
@@ -448,7 +448,6 @@ fn test_infix_expressions(
 ) {
     let Expressions::InExp(op_exp) = condition else { panic!() };
 
-    assert!(op_exp.operator == operator.to_string());
     assert!(op_exp.left.as_string() == left.to_string());
     assert!(op_exp.right.as_string() == right.to_string());
     assert!(op_exp.operator == operator.to_string());
@@ -504,4 +503,32 @@ fn test_function_parameters_parsing() {
             assert!(ident.eq(&p.value), "unexpected identifier");
         }
     }
+}
+
+#[test]
+fn test_call_expression_parsing() {
+    let input = "add(1, 2 * 3, 4 + 5);";
+
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer);
+    let program = parser.parse_program();
+    check_parser_errors(&parser);
+
+    assert!(
+        program.statements.len() == 1,
+        "program.statements does not contain 1 statements"
+    );
+
+    let Statements::ExpStmt(stmt) = &program.statements[0] else { panic!("stmt is not ExpressionStatment") };
+    let Expressions::CalEx(exp) = &stmt.expression else { panic!("stmt.Expression is not CallExpression") };
+
+    test_identifer(&exp.function, "add");
+
+    assert!(exp.arguments.len() == 3, "wrong length of arguments.");
+
+    println!("prog: {program:#?}");
+
+    test_integer_literal(&exp.arguments[0], 1.0);
+    test_infix_expressions(&exp.arguments[1], 2.0, "*", 3.0);
+    test_infix_expressions(&exp.arguments[2], 4.0, "+", 5.0);
 }

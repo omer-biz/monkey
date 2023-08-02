@@ -37,6 +37,7 @@ pub enum Expressions {
     Boole(Boolean),
     IFExp(IfExpression),
     FnLit(FunctionLiteral),
+    CalEx(CallExpressions),
 }
 
 #[derive(Debug)]
@@ -364,5 +365,37 @@ impl Node for FunctionLiteral {
 }
 
 impl Expression for FunctionLiteral {
+    fn expression_node(&self) {}
+}
+
+#[derive(Debug)]
+pub struct CallExpressions {
+    pub token: Token,
+    pub function: Box<Expressions>,
+    pub arguments: Vec<Expressions>,
+}
+
+impl Node for CallExpressions {
+    fn token_literal(&self) -> &str {
+        &self.token.literal
+    }
+
+    fn as_string(&self) -> String {
+        let mut buffer = String::new();
+
+        buffer.push_str(&self.function.as_string());
+        buffer.push('(');
+
+        for arg in &self.arguments {
+            buffer.push_str(&format!("{}, ", arg.as_string()));
+        }
+
+        buffer.push(')');
+
+        buffer
+    }
+}
+
+impl Expression for CallExpressions {
     fn expression_node(&self) {}
 }

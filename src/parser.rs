@@ -1,11 +1,11 @@
 use lazy_static::lazy_static;
-use std::collections::HashMap;
+use std::{collections::HashMap, vec};
 
 use crate::{
     ast::{
-        BlockStatement, Boolean, ExpressionStatement, Expressions, FunctionLiteral, Identifier,
-        IfExpression, InfixExpression, IntegerLiteral, LetStatement, PrefixExpression, Program,
-        ReturnStatement, Statements,
+        BlockStatement, Boolean, CallExpressions, ExpressionStatement, Expressions,
+        FunctionLiteral, Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement,
+        PrefixExpression, Program, ReturnStatement, Statements,
     },
     lexer::Lexer,
     token::{Token, TokenType},
@@ -14,6 +14,7 @@ use crate::{
 lazy_static! {
     static ref PRECEDENCES: HashMap<TokenType, Precedence> = {
         let mut precedences = HashMap::new();
+        precedences.insert(TokenType::LPAREN, Precedence::Call);
         precedences.insert(TokenType::EQ, Precedence::Equals);
         precedences.insert(TokenType::NEQ, Precedence::Equals);
         precedences.insert(TokenType::LT, Precedence::Lessgreater);
@@ -39,7 +40,7 @@ enum Precedence {
     Sum,         // +
     Product,     // *
     Prefix,      // -X or !X
-                 // Call,        // myFunction(X)
+    Call,        // myFunction(X)
 }
 
 pub struct Parser {
@@ -85,10 +86,22 @@ impl Parser {
         p.register_infix(TokenType::NEQ, Parser::parse_infix_expression);
         p.register_infix(TokenType::LT, Parser::parse_infix_expression);
         p.register_infix(TokenType::GT, Parser::parse_infix_expression);
+        p.register_infix(TokenType::LPAREN, Parser::parse_call_expression);
 
         p.next_token();
         p.next_token();
         p
+    }
+
+    pub fn parse_call_expression(&mut self, function: Expressions) -> Expressions {
+        let token = self.cur_token.take().expect("no token found");
+        let arguments = self.parse_call_arguments();
+
+        Expressions::from(CallExpressions {
+            token,
+            arguments,
+            function: Box::new(function),
+        })
     }
 
     pub fn parse_function_literal(&mut self) -> Expressions {
@@ -483,6 +496,37 @@ impl Parser {
         }
 
         identifiers
+    }
+
+    fn parse_call_arguments(&mut self) -> Vec<Expressions> {
+        let mut args = vec![];
+
+        if self.peek_token_is(&TokenType::RPAREN) {
+            self.next_token();
+            return args;
+        }
+
+        self.next_token();
+        args.push(
+            self.parse_expression(&Precedence::Lowest)
+                .expect("no expression found"),
+        );
+
+        while self.peek_token_is(&TokenType::COMMA) {
+            self.next_token();
+            self.next_token();
+
+            args.push(
+                self.parse_expression(&Precedence::Lowest)
+                    .expect("no expression found"),
+            );
+        }
+
+        if !self.expect_peek_is(TokenType::RPAREN) {
+            panic!("no closing parenthesis");
+        }
+
+        args
     }
 }
 
