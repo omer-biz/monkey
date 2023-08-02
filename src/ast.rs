@@ -120,7 +120,7 @@ impl Expression for Identifier {
 #[derive(Debug)]
 pub struct ReturnStatement {
     pub token: Token,
-    pub return_value: Option<Expressions>,
+    pub return_value: Expressions,
 }
 
 impl Node for ReturnStatement {
@@ -133,15 +133,7 @@ impl Node for ReturnStatement {
 
         buffer.push_str(&format!("{} ", self.token_literal()));
 
-        if self.return_value.is_some() {
-            buffer.push_str(
-                &self
-                    .return_value
-                    .as_ref()
-                    .expect("no return value")
-                    .as_string(),
-            );
-        }
+        buffer.push_str(&self.return_value.as_string());
 
         buffer.push(';');
 

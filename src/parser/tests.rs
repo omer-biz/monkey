@@ -12,32 +12,31 @@ pub fn test_let_statements() {
     use super::Parser;
     use crate::lexer::Lexer;
 
-    let input = r#"
-        let x = 5;
-        let y = 10;
-        let foobar = barfoo;
-        "#;
+    let tests: Vec<(&str, &str, Box<dyn Display>)> = vec![
+        ("let x = 5;", "x", Box::new(5)),
+        ("let y = true;", "y", Box::new(true)),
+        ("let foobar = y;", "foobar", Box::new("y")),
+    ];
 
-    let lexer = Lexer::new(input);
-    let mut parser = Parser::new(lexer);
+    for t in tests {
+        let lexer = Lexer::new(t.0);
+        let mut parser = Parser::new(lexer);
 
-    let program = parser.parse_program();
-    check_parser_errors(&parser);
+        let program = parser.parse_program();
+        println!("prog: {program:#?}");
+        check_parser_errors(&parser);
 
-    assert!(
-        program.statements.len() == 3,
-        "program.statments does not contain 3 statements"
-    );
+        assert!(
+            program.statements.len() == 1,
+            "program.statments does not contain 3 statements"
+        );
+        let stmt = &program.statements[0];
 
-    let exprected_ident = ["x", "y", "foobar"];
+        test_let_statement(&stmt, t.1);
 
-    for (i, ident) in exprected_ident.iter().enumerate() {
-        let stmt = program
-            .statements
-            .get(i)
-            .expect("statment not found at index");
-
-        test_let_statement(stmt, ident);
+        let Statements::LetStmt(val) = &stmt else { panic!("not a let statement") };
+        let val = &val.value;
+        assert!(val.as_string() == t.2.to_string());
     }
 }
 
@@ -85,31 +84,32 @@ pub fn test_return_statements() {
     use super::Parser;
     use crate::lexer::Lexer;
 
-    let input = r#"
-        return 5;
-        return x;
-        return x + 1;
-        return 10 + 1;
-        "#;
+    let tests = [
+        ("return 5;", "5"),
+        ("return true;", "true"),
+        ("return y;", "y"),
+    ];
 
-    let lexer = Lexer::new(input);
-    let mut parser = Parser::new(lexer);
+    for t in tests {
+        let lexer = Lexer::new(t.0);
+        let mut parser = Parser::new(lexer);
 
-    let program = parser.parse_program();
-    check_parser_errors(&parser);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+        assert!(
+            program.statements.len() == 1,
+            "program.statments does not contain 4 statements"
+        );
 
-    assert!(
-        program.statements.len() == 4,
-        "program.statments does not contain 4 statements"
-    );
+        let Statements::RetStmt(return_statement) = &program.statements[0] else { panic!("not return statement got") };
 
-    for stmt in program.statements.iter() {
-        let Statements::RetStmt(return_statement) = stmt else { panic!("not return statement got {:?}", stmt) };
         assert!(
             return_statement.token_literal() == "return",
             "return_statement.token_literal() not `return` got {:?}",
             return_statement.token_literal()
         );
+
+        assert!(return_statement.return_value.as_string() == t.1);
     }
 }
 

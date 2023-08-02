@@ -340,20 +340,20 @@ impl Parser {
             return None;
         }
 
-        while !self.cur_token_is(&TokenType::SEMICOLON) {
+        self.next_token();
+
+        let value = self
+            .parse_expression(&Precedence::Lowest)
+            .expect("can't find expression");
+
+        if self.peek_token_is(&TokenType::SEMICOLON) {
             self.next_token();
         }
 
         Some(Statements::from(LetStatement {
             name,
             token: let_token,
-            value: Expressions::from(Identifier {
-                token: Token {
-                    ttype: TokenType::IDENT,
-                    literal: "".to_string(),
-                },
-                value: "".to_string(),
-            }),
+            value,
         }))
     }
 
@@ -380,13 +380,17 @@ impl Parser {
 
         self.next_token();
 
-        while !self.cur_token_is(&TokenType::SEMICOLON) {
+        let return_value = self
+            .parse_expression(&Precedence::Lowest)
+            .expect("can't find an expression");
+
+        if self.peek_token_is(&TokenType::SEMICOLON) {
             self.next_token();
         }
 
         Some(Statements::from(ReturnStatement {
             token: ret_token,
-            return_value: None,
+            return_value,
         }))
     }
 
