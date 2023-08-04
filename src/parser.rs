@@ -47,7 +47,7 @@ pub struct Parser {
     lexer: Lexer,
     cur_token: Option<Token>,
     peek_token: Option<Token>,
-    errors: Vec<String>,
+    pub errors: Vec<String>,
 
     prefix_parse_fns: HashMap<TokenType, PrefixParseFn>,
     infix_parse_fns: HashMap<TokenType, InfixParseFn>,

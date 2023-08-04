@@ -1,6 +1,6 @@
 use std::io::{self, BufRead, BufReader, Read, Write};
 
-use crate::lexer::Lexer;
+use crate::{lexer::Lexer, parser::Parser};
 
 const PROMPT: &str = ">> ";
 
@@ -15,17 +15,22 @@ impl Repl {
         let mut buf_read = BufReader::new(reader);
         let mut line = String::new();
 
-        // write!(writer, "{PROMPT}").unwrap();
         print!("{PROMPT}");
         let _ = io::stdout().flush();
 
         while buf_read.read_line(&mut line)? > 0 {
-            let mut lexer = Lexer::new(&line);
+            let lexer = Lexer::new(&line);
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
 
-            while let Some(token) = lexer.next_token() {
-                // write!(writer, "token: {:?}", token).unwrap();
-                println!("token: {:?}", token);
+            if parser.errors.len() != 0 {
+                print_parser_errors(&parser.errors);
+                line = String::new();
+                print!("{PROMPT}");
+                let _ = io::stdout().flush();
+                continue;
             }
+            println!("{}", program);
 
             print!("{PROMPT}");
             let _ = io::stdout().flush();
@@ -34,5 +39,11 @@ impl Repl {
         }
 
         Ok(())
+    }
+}
+
+fn print_parser_errors(errors: &[String]) {
+    for e in errors {
+        println!("\t{e}");
     }
 }
