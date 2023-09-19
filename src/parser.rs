@@ -532,6 +532,10 @@ impl Parser {
 
         args
     }
+
+    pub fn current_line(&self) -> usize {
+        self.lexer.line
+    }
 }
 
 mod tests;

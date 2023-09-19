@@ -5,6 +5,7 @@ pub struct Lexer {
     position: usize,
     read_position: usize,
     ch: char,
+    pub line: usize,
 }
 
 trait IsLetter {
@@ -17,6 +18,16 @@ impl IsLetter for char {
     }
 }
 
+trait IsNewLine {
+    fn is_newline(&self) -> bool;
+}
+
+impl IsNewLine for char {
+    fn is_newline(&self) -> bool {
+        self == &'\n'
+    }
+}
+
 impl Lexer {
     pub fn new(input: &str) -> Self {
         let mut l = Lexer {
@@ -24,6 +35,7 @@ impl Lexer {
             position: 0,
             read_position: 0,
             ch: '\0',
+            line: 1,
         };
         l.next_char();
         l
@@ -94,11 +106,9 @@ impl Lexer {
 
     pub fn skip_whitespace(&mut self) {
         while self.ch == ' ' || self.ch == '\t' || self.ch == '\n' || self.ch == '\r' {
-            // println!("cur char: '{}'", self.ch);
-            // println!(
-            //     "nex char: '{:?}'",
-            //     self.input.chars().nth(self.read_position)
-            // );
+            if self.ch.is_newline() {
+                self.line += 1;
+            }
 
             self.next_char();
         }
