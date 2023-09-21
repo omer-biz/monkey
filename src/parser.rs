@@ -434,8 +434,8 @@ impl Parser {
             let Some(&infix) = self.infix_parse_fns.get(
                 self.peek_token
                     .as_ref()
-                    .map(|t| &t.ttype)
-                    .expect("token not found"),
+                    .map(|t| &t.ttype)?,
+                    // .expect("token not found"),
             ) else {
                 return Some(left_expression);
             };
@@ -531,10 +531,6 @@ impl Parser {
         }
 
         args
-    }
-
-    pub fn current_line(&self) -> usize {
-        self.lexer.line
     }
 }
 

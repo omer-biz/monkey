@@ -5,7 +5,8 @@ pub struct Lexer {
     position: usize,
     read_position: usize,
     ch: char,
-    pub line: usize,
+    line: usize,
+    colm: usize,
 }
 
 trait IsLetter {
@@ -36,6 +37,7 @@ impl Lexer {
             read_position: 0,
             ch: '\0',
             line: 1,
+            colm: 1,
         };
         l.next_char();
         l
@@ -50,6 +52,7 @@ impl Lexer {
                 .chars()
                 .nth(self.read_position)
                 .expect("bounded checked");
+            self.colm += 1;
         }
 
         self.position = self.read_position;
@@ -108,6 +111,7 @@ impl Lexer {
         while self.ch == ' ' || self.ch == '\t' || self.ch == '\n' || self.ch == '\r' {
             if self.ch.is_newline() {
                 self.line += 1;
+                self.colm = 1;
             }
 
             self.next_char();
@@ -152,6 +156,9 @@ impl Lexer {
                 .expect("peek_char_fail")
         }
     }
+    pub fn position(&self) -> (usize, usize) {
+        (self.line, self.colm)
+    }
 }
 
 impl Iterator for Lexer {
@@ -163,6 +170,48 @@ impl Iterator for Lexer {
 }
 
 mod tests {
+
+    #[test]
+    fn test_line_number() {
+        use super::Lexer;
+        use crate::token::{Token, TokenType};
+
+        let input = r#"let one = 1;
+let two = 2;
+let three = 3;
+let four = 4;"#;
+
+        let expected = [
+            ((1, 5), Token::new(TokenType::LET, "let")),
+            ((1, 9), Token::new(TokenType::IDENT, "one")),
+            ((1, 11), Token::new(TokenType::ASSIGN, "=")),
+            ((1, 13), Token::new(TokenType::NUM, "1")),
+            ((1, 14), Token::new(TokenType::SEMICOLON, ";")),
+            ((2, 5), Token::new(TokenType::LET, "let")),
+            ((2, 9), Token::new(TokenType::IDENT, "two")),
+            ((2, 11), Token::new(TokenType::ASSIGN, "=")),
+            ((2, 13), Token::new(TokenType::NUM, "2")),
+            ((2, 14), Token::new(TokenType::SEMICOLON, ";")),
+            ((3, 5), Token::new(TokenType::LET, "let")),
+            ((3, 11), Token::new(TokenType::IDENT, "three")),
+            ((3, 13), Token::new(TokenType::ASSIGN, "=")),
+            ((3, 15), Token::new(TokenType::NUM, "3")),
+            ((3, 16), Token::new(TokenType::SEMICOLON, ";")),
+            ((4, 5), Token::new(TokenType::LET, "let")),
+            ((4, 10), Token::new(TokenType::IDENT, "four")),
+            ((4, 12), Token::new(TokenType::ASSIGN, "=")),
+            ((4, 14), Token::new(TokenType::NUM, "4")),
+            ((4, 14), Token::new(TokenType::SEMICOLON, ";")),
+        ];
+
+        let mut lexer = Lexer::new(input);
+
+        for (exp_pos, exp_tok) in expected {
+            let tok = lexer.next().expect("No token found");
+            assert_eq!(exp_pos, lexer.position(), "The token positions don't match");
+            assert_eq!(exp_tok, tok, "The token's don't match");
+        }
+    }
 
     #[test]
     fn test_next_token() {
