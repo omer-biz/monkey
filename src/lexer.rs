@@ -340,9 +340,7 @@ if (5 > 10) {
 
         for expected in expected_tokens.iter() {
             let tok = lex.next_token();
-            if &tok != expected {
-                panic!("Expected: {:?} Got: {:?}\n", expected, tok);
-            }
+            assert_eq!(&tok, expected, "Expected: {:?} Got: {:?}\n", expected, tok);
         }
     }
 }
