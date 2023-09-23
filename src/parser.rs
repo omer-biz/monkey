@@ -7,8 +7,10 @@ use crate::{
         FunctionLiteral, Identifier, IfExpression, InfixExpression, IntegerLiteral, LetStatement,
         PrefixExpression, Program, ReturnStatement, Statements,
     },
+    error::Result,
+    missing_token,
     lexer::Lexer,
-    token::{Token, TokenType},
+    token::{Token, TokenType}, expected_token, no_parsing_function,
 };
 
 lazy_static! {
@@ -28,8 +30,8 @@ lazy_static! {
     };
 }
 
-type PrefixParseFn = for<'a> fn(&'a mut Parser) -> Expressions;
-type InfixParseFn = for<'a> fn(&'a mut Parser, Expressions) -> Expressions;
+type PrefixParseFn = for<'a> fn(&'a mut Parser) -> Result<Expressions>;
+type InfixParseFn = for<'a> fn(&'a mut Parser, Expressions) -> Result<Expressions>;
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -93,19 +95,27 @@ impl Parser {
         p
     }
 
-    pub fn parse_call_expression(&mut self, function: Expressions) -> Expressions {
-        let token = self.cur_token.take().expect("no token found");
+    pub fn parse_call_expression(&mut self, function: Expressions) -> Result<Expressions> {
+        let token = self
+            .cur_token
+            .take()
+            .ok_or_else(missing_token!(self.lexer.position()))?;
+
         let arguments = self.parse_call_arguments();
 
-        Expressions::from(CallExpressions {
+        Ok(Expressions::from(CallExpressions {
             token,
             arguments,
             function: Box::new(function),
-        })
+        }))
     }
 
-    pub fn parse_function_literal(&mut self) -> Expressions {
-        let token = self.cur_token.take().expect("token not found");
+    pub fn parse_function_literal(&mut self) -> Result<Expressions> {
+        let token = self
+            .cur_token
+            .take()
+            .ok_or_else(missing_token!(self.lexer.position()))?;
+
         if !self.expect_peek_is(TokenType::LPAREN) {
             panic!()
         }
@@ -116,17 +126,20 @@ impl Parser {
             panic!()
         }
 
-        let body = self.parse_block_statement();
+        let body = self.parse_block_statement()?;
 
-        Expressions::from(FunctionLiteral {
+        Ok(Expressions::from(FunctionLiteral {
             token,
             parameters,
             body,
-        })
+        }))
     }
 
-    pub fn parse_if_expression(&mut self) -> Expressions {
-        let token = self.cur_token.take().expect("token not found");
+    pub fn parse_if_expression(&mut self) -> Result<Expressions> {
+        let token = self
+            .cur_token
+            .take()
+            .ok_or_else(missing_token!(self.lexer.position()))?;
 
         if !self.expect_peek_is(TokenType::LPAREN) {
             panic!();
@@ -145,7 +158,7 @@ impl Parser {
             panic!()
         }
 
-        let consequence = self.parse_block_statement();
+        let consequence = self.parse_block_statement()?;
 
         let alternative = if self.peek_token_is(&TokenType::ELSE) {
             self.next_token();
@@ -153,44 +166,52 @@ impl Parser {
             if !self.expect_peek_is(TokenType::LCURL) {
                 None
             } else {
-                Some(self.parse_block_statement())
+                Some(self.parse_block_statement()?)
             }
         } else {
             None
         };
 
-        Expressions::from(IfExpression {
+        Ok(Expressions::from(IfExpression {
             condition: Box::new(condition),
             consequence,
             alternative,
             token,
-        })
+        }))
     }
 
-    pub fn parse_grouped_expression(&mut self) -> Expressions {
+    pub fn parse_grouped_expression(&mut self) -> Result<Expressions> {
         self.next_token();
         let exp = self
-            .parse_expression(&Precedence::Lowest)
-            .expect("could not parse input");
+            .parse_expression(&Precedence::Lowest)?;
+            
 
         if !self.expect_peek_is(TokenType::RPAREN) {
             println!("exp: {exp:#?}");
-            panic!("no left paren found")
+            panic!("No left paren found at: {:?}", self.lexer.position())
         }
 
-        return exp;
+        Ok(exp)
     }
 
-    pub fn parse_boolean(&mut self) -> Expressions {
-        let token = self.cur_token.take().expect("no token found");
+    pub fn parse_boolean(&mut self) -> Result<Expressions> {
+        let token = self
+            .cur_token
+            .take()
+            .ok_or_else(missing_token!(self.lexer.position()))?;
+
         let value = token.literal.parse::<bool>().unwrap_or(false);
 
-        Expressions::from(Boolean { value, token })
+        Ok(Expressions::from(Boolean { value, token }))
     }
 
-    pub fn parse_infix_expression(&mut self, left: Expressions) -> Expressions {
+    pub fn parse_infix_expression(&mut self, left: Expressions) -> Result<Expressions> {
         let precedence = self.cur_precedence();
-        let token = self.cur_token.take().expect("no token found");
+        let token = self
+            .cur_token
+            .take()
+            .ok_or_else(missing_token!(self.lexer.position()))?;
+
         let operator = token.literal.to_string();
 
         self.next_token();
@@ -199,12 +220,12 @@ impl Parser {
             .parse_expression(precedence)
             .expect("no right expression found");
 
-        Expressions::from(InfixExpression {
+        Ok(Expressions::from(InfixExpression {
             left: Box::new(left),
             right: Box::new(right),
             operator,
             token,
-        })
+        }))
     }
 
     fn token_precedence<'precedence>(tt: Option<&Token>) -> &'precedence Precedence {
@@ -221,8 +242,11 @@ impl Parser {
         Parser::token_precedence(self.cur_token.as_ref())
     }
 
-    pub fn parse_prefix_expression(&mut self) -> Expressions {
-        let token = self.cur_token.take().expect("no token found");
+    pub fn parse_prefix_expression(&mut self) -> Result<Expressions> {
+        let token = self
+            .cur_token
+            .take()
+            .ok_or_else(missing_token!(self.lexer.position()))?;
 
         let operator = token.literal.chars().next().expect("operator not found");
         self.next_token();
@@ -231,11 +255,11 @@ impl Parser {
                 .expect("no expression found"),
         );
 
-        Expressions::from(PrefixExpression {
+        Ok(Expressions::from(PrefixExpression {
             operator,
             right,
             token,
-        })
+        }))
     }
 
     pub fn no_prefix_parse_fn_error(&mut self) {
@@ -243,22 +267,28 @@ impl Parser {
         self.errors.push(msg);
     }
 
-    pub fn parse_identifer(&mut self) -> Expressions {
-        let token = self.cur_token.take().expect("token not found");
+    pub fn parse_identifer(&mut self) -> Result<Expressions> {
+        let token = self
+            .cur_token
+            .take()
+            .ok_or_else(missing_token!(self.lexer.position()))?;
 
-        Expressions::from(Identifier {
+        Ok(Expressions::from(Identifier {
             value: token.literal.clone(),
             token,
-        })
+        }))
     }
 
-    pub fn parse_integers(&mut self) -> Expressions {
-        let token = self.cur_token.take().expect("token not found");
+    pub fn parse_integers(&mut self) -> Result<Expressions> {
+        let token = self
+            .cur_token
+            .take()
+            .ok_or_else(missing_token!(self.lexer.position()))?;
 
-        Expressions::Integ(IntegerLiteral {
+        Ok(Expressions::Integ(IntegerLiteral {
             value: token.literal.parse().expect("can't convert literal"),
             token,
-        })
+        }))
     }
 
     pub fn peek_error(&mut self, expected: &TokenType) {
@@ -300,16 +330,18 @@ impl Parser {
         let mut program = Program { statements: vec![] };
 
         while self.cur_token.is_some() {
-            if let Some(stmt) = self.parse_statement() {
-                program.statements.push(stmt);
+            match self.parse_statement() {
+                Ok(stmt) => program.statements.push(stmt),
+                Err(err) => println!("Error: {:?}", err)
             }
 
             self.next_token();
         }
+
         program
     }
 
-    fn parse_statement(&mut self) -> Option<Statements> {
+    fn parse_statement(&mut self) -> Result<Statements> {
         match self.cur_token {
             Some(Token {
                 ttype: TokenType::LET,
@@ -323,21 +355,21 @@ impl Parser {
         }
     }
 
-    fn parse_let_statement(&mut self) -> Option<Statements> {
-        let let_token = self.cur_token.take().expect("`let_token` not found");
+    fn parse_let_statement(&mut self) -> Result<Statements> {
+        let let_token = self.cur_token.take().ok_or_else(missing_token!(self.lexer.position()))?;
 
         if !self.expect_peek_is(TokenType::IDENT) {
-            return None;
+            return Err(expected_token!(self.lexer.position(), TokenType::IDENT));
         }
 
-        let ident_tokn = self.cur_token.take().expect("checked");
+        let ident_tokn = self.cur_token.take().ok_or_else(missing_token!(self.lexer.position()))?;
         let name = Identifier {
             token: ident_tokn.clone(),
             value: ident_tokn.literal,
         };
 
         if !self.expect_peek_is(TokenType::ASSIGN) {
-            return None;
+            return Err(expected_token!(self.lexer.position(), TokenType::ASSIGN));
         }
 
         self.next_token();
@@ -350,7 +382,7 @@ impl Parser {
             self.next_token();
         }
 
-        Some(Statements::from(LetStatement {
+        Ok(Statements::from(LetStatement {
             name,
             token: let_token,
             value,
@@ -375,8 +407,9 @@ impl Parser {
         }
     }
 
-    fn parse_return_statement(&mut self) -> Option<Statements> {
-        let ret_token = self.cur_token.take().expect("`return` not found");
+    fn parse_return_statement(&mut self) -> Result<Statements> {
+        let ret_token = self.cur_token.take().ok_or_else(missing_token!(self.lexer.position()))?;
+
 
         self.next_token();
 
@@ -388,7 +421,7 @@ impl Parser {
             self.next_token();
         }
 
-        Some(Statements::from(ReturnStatement {
+        Ok(Statements::from(ReturnStatement {
             token: ret_token,
             return_value,
         }))
@@ -402,11 +435,12 @@ impl Parser {
         self.infix_parse_fns.insert(token_type, infix_fn);
     }
 
-    fn parse_expression_statement(&mut self) -> Option<Statements> {
+    fn parse_expression_statement(&mut self) -> Result<Statements> {
         let token = self
             .cur_token
             .clone()
-            .expect("no token found on expression statement");
+            .ok_or_else(missing_token!(self.lexer.position()))?;
+
 
         let expression = self.parse_expression(&Precedence::Lowest)?;
 
@@ -414,18 +448,19 @@ impl Parser {
             self.next_token();
         }
 
-        Some(Statements::from(ExpressionStatement { token, expression }))
+        Ok(Statements::from(ExpressionStatement { token, expression }))
     }
 
-    fn parse_expression(&mut self, precedence: &Precedence) -> Option<Expressions> {
+    fn parse_expression(&mut self, precedence: &Precedence) -> Result<Expressions> {
         let Some(&prefix) = self.prefix_parse_fns.get(
             self.cur_token
                 .as_ref()
                 .map(|t| &t.ttype)
-                .expect("token not found")
+                .ok_or_else(missing_token!(self.lexer.position()))?
+                
         ) else {
             self.no_prefix_parse_fn_error();
-            return None;
+            return Err(no_parsing_function!(self.lexer.position(), TokenType::ASSIGN));
         };
 
         let mut left_expression = prefix(self);
@@ -434,33 +469,35 @@ impl Parser {
             let Some(&infix) = self.infix_parse_fns.get(
                 self.peek_token
                     .as_ref()
-                    .map(|t| &t.ttype)?,
-                    // .expect("token not found"),
+                    .map(|t| &t.ttype)
+                    .ok_or_else(missing_token!(self.lexer.position()))?,
             ) else {
-                return Some(left_expression);
+                return left_expression;
             };
 
             self.next_token();
-            left_expression = infix(self, left_expression);
+            left_expression = infix(self, left_expression?);
         }
 
-        Some(left_expression)
+        left_expression
     }
 
-    fn parse_block_statement(&mut self) -> crate::ast::BlockStatement {
-        let token = self.cur_token.take().expect("no token found");
+    fn parse_block_statement(&mut self) -> Result<BlockStatement> {
+        let token = self.cur_token.take()
+            .ok_or_else(missing_token!(self.lexer.position()))?;
+
         let mut statements = vec![];
 
         self.next_token();
 
         while !self.cur_token_is(&TokenType::RCURL) && !self.cur_token_is(&TokenType::EOF) {
-            if let Some(stmt) = self.parse_statement() {
+            if let Ok(stmt) = self.parse_statement() {
                 statements.push(stmt)
             }
             self.next_token();
         }
 
-        BlockStatement { token, statements }
+        Ok(BlockStatement { token, statements })
     }
 
     fn parse_function_parameters(&mut self) -> Vec<Identifier> {
